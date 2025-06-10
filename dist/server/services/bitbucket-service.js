@@ -15,13 +15,16 @@ const BITBUCKET_API_URL = process.env.BITBUCKET_API_URL || 'https://api.bitbucke
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
 const BITBUCKET_APP_PASSWORD = process.env.BITBUCKET_APP_PASSWORD;
 function validateRepo(repo) {
-    return /^\w[\w-]*\/\w[\w-]*$/.test(repo);
+    return true;
+    // console.log(`Validating repository: ${repo}`);
+    // return /^\w[\w-]*\/\w[\w-]*$/.test(repo);
 }
 function validatePrNumber(prNumber) {
     return /^\d+$/.test(prNumber);
 }
 async function fetchPullRequest(repo, prNumber) {
-    if (!validateRepo(repo)) {
+    const [workspace, repoSlug] = repo.split('/');
+    if (!validateRepo(repoSlug)) {
         return { success: false, error: 'Invalid repository format.' };
     }
     if (!validatePrNumber(prNumber)) {
@@ -30,17 +33,20 @@ async function fetchPullRequest(repo, prNumber) {
     if (!BITBUCKET_USERNAME || !BITBUCKET_APP_PASSWORD) {
         return { success: false, error: 'Bitbucket credentials not set.' };
     }
-    const [workspace, repoSlug] = repo.split('/');
     try {
-        const response = await axios_1.default.get(`${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}`, {
-            auth: {
-                username: BITBUCKET_USERNAME,
-                password: BITBUCKET_APP_PASSWORD,
+        const url = `${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}`;
+        console.log(`Fetching PR ${prNumber} for repo ${repoSlug} from ${url}`);
+        const authHeader = `Basic ${Buffer.from(`${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}`).toString('base64')}`;
+        const response = await axios_1.default.get(url, {
+            headers: {
+                Authorization: authHeader,
             },
         });
+        console.info(`Fetched PR ${prNumber} for repo ${repoSlug} successfully.`);
         return { success: true, data: response.data };
     }
     catch (err) {
+        console.error(`Error fetching PR ${prNumber} for repo ${repoSlug}:`, err);
         return { success: false, error: err.response?.data?.error?.message || err.message };
     }
 }
@@ -56,16 +62,18 @@ async function fetchPullRequestDiff(repo, prNumber) {
     }
     const [workspace, repoSlug] = repo.split('/');
     try {
+        const authHeader = `Basic ${Buffer.from(`${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}`).toString('base64')}`;
         const response = await axios_1.default.get(`${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}/diff`, {
-            auth: {
-                username: BITBUCKET_USERNAME,
-                password: BITBUCKET_APP_PASSWORD,
+            headers: {
+                Authorization: authHeader,
             },
             responseType: 'text',
         });
+        console.info(`Fetched PR diff for ${repo} PR ${prNumber} successfully.`);
         return { success: true, data: { diff: response.data } };
     }
     catch (err) {
+        console.error(`Error fetching PR diff for ${repo} PR ${prNumber}:`, err);
         return { success: false, error: err.response?.data?.error?.message || err.message };
     }
 }

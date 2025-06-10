@@ -120,7 +120,7 @@ Format the response in markdown and keep it professional and concise.`;
       // Other error
       errorMessage = error.message || errorMessage;
     }
-    
+    console.error(`Error from ${provider} service:`, errorMessage);
     return {
       success: false,
       error: `${provider} service error: ${errorMessage}`

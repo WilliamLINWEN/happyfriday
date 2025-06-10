@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node dist/server/index.js",
+    "start": "npm run build && node dist/server/index.js",
     "dev": "ts-node src/server/index.ts",
     "dev:watch": "nodemon src/server/index.ts",
     "build": "tsc",

@@ -201,25 +201,25 @@ class InputValidator {
     static validateGenerateDescriptionRequest(body) {
         const result = { isValid: true, errors: [] };
         // Validate request size first
-        const sizeValidation = this.validateRequestSize(body);
+        const sizeValidation = InputValidator.validateRequestSize(body);
         if (!sizeValidation.isValid) {
             return sizeValidation;
         }
         // Validate repository
-        const repoValidation = this.validateRepository(body.repository);
+        const repoValidation = InputValidator.validateRepository(body.repository);
         if (!repoValidation.isValid) {
             result.isValid = false;
             result.errors.push(...repoValidation.errors);
         }
         // Validate PR number
-        const prValidation = this.validatePRNumber(body.prNumber);
+        const prValidation = InputValidator.validatePRNumber(body.prNumber);
         if (!prValidation.isValid) {
             result.isValid = false;
             result.errors.push(...prValidation.errors);
         }
         // Validate provider (optional)
         if (body.provider) {
-            const providerValidation = this.validateProvider(body.provider);
+            const providerValidation = InputValidator.validateProvider(body.provider);
             if (!providerValidation.isValid) {
                 result.isValid = false;
                 result.errors.push(...providerValidation.errors);
@@ -255,4 +255,11 @@ class InputValidator {
 }
 exports.InputValidator = InputValidator;
 // Export utility functions for convenience
-exports.escapeHtml = InputValidator.escapeHtml, exports.sanitizeString = InputValidator.sanitizeString, exports.validateRepository = InputValidator.validateRepository, exports.validatePRNumber = InputValidator.validatePRNumber, exports.validateProvider = InputValidator.validateProvider, exports.validateString = InputValidator.validateString, exports.validateRequestSize = InputValidator.validateRequestSize, exports.validateGenerateDescriptionRequest = InputValidator.validateGenerateDescriptionRequest;
+exports.escapeHtml = InputValidator.escapeHtml;
+exports.sanitizeString = InputValidator.sanitizeString;
+exports.validateRepository = InputValidator.validateRepository;
+exports.validatePRNumber = InputValidator.validatePRNumber;
+exports.validateProvider = InputValidator.validateProvider;
+exports.validateString = InputValidator.validateString;
+exports.validateRequestSize = InputValidator.validateRequestSize;
+exports.validateGenerateDescriptionRequest = InputValidator.validateGenerateDescriptionRequest;

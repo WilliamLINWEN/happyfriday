@@ -33,12 +33,13 @@ async function fetchPullRequest(repo: string, prNumber: string): Promise<TBitbuc
   try {
     const url = `${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}`;
     console.log(`Fetching PR ${prNumber} for repo ${repoSlug} from ${url}`);
+    const authHeader = `Basic ${Buffer.from(`${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}`).toString('base64')}`;
     const response = await axios.get(url, {
-      auth: {
-        username: BITBUCKET_USERNAME,
-        password: BITBUCKET_APP_PASSWORD,
+      headers: {
+        Authorization: authHeader,
       },
     });
+    console.info(`Fetched PR ${prNumber} for repo ${repoSlug} successfully.`);
     return { success: true, data: response.data as TPullRequest };
   } catch (err: any) {
     console.error(`Error fetching PR ${prNumber} for repo ${repoSlug}:`, err);
@@ -58,15 +59,16 @@ async function fetchPullRequestDiff(repo: string, prNumber: string): Promise<TBi
   }
   const [workspace, repoSlug] = repo.split('/');
   try {
+    const authHeader = `Basic ${Buffer.from(`${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}`).toString('base64')}`;
     const response = await axios.get(`${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}/diff`,
       {
-        auth: {
-          username: BITBUCKET_USERNAME,
-          password: BITBUCKET_APP_PASSWORD,
+        headers: {
+          Authorization: authHeader,
         },
         responseType: 'text',
       }
     );
+    console.info(`Fetched PR diff for ${repo} PR ${prNumber} successfully.`);
     return { success: true, data: { diff: response.data as string } };
   } catch (err: any) {
     console.error(`Error fetching PR diff for ${repo} PR ${prNumber}:`, err);

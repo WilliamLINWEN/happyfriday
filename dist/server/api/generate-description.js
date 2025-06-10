@@ -56,6 +56,8 @@ async function generateDescription(req, res, next) {
             },
             options
         };
+        console.log(`Using LLM provider: ${selectedProvider}`);
+        console.log(`LLM request prepared for PR ${prNumber} in repository ${repository}`);
         // Generate description using LLM
         const llmResponse = await llmService.generateDescription(llmRequest);
         if (!llmResponse.success || !llmResponse.data) {

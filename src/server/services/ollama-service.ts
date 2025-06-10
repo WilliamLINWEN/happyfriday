@@ -21,7 +21,7 @@ export class OllamaService implements ILLMService {
       const temperature = request.options?.temperature || 0.7;
 
       const prompt = LLMService.formatPRDataForPrompt(request.prData);
-
+      console.log(`Generating description with Ollama model: ${model}`);
       const response = await axios.post(
         `${this.baseURL}/api/generate`,
         {

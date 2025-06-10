@@ -20,6 +20,7 @@ class OllamaService {
             const model = request.options?.model || this.defaultModel;
             const temperature = request.options?.temperature || 0.7;
             const prompt = llm_service_1.LLMService.formatPRDataForPrompt(request.prData);
+            console.log(`Generating description with Ollama model: ${model}`);
             const response = await axios_1.default.post(`${this.baseURL}/api/generate`, {
                 model,
                 prompt,
