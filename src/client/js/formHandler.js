@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', function () {
       loading.style.display = 'none';
       return;
     }
+    // Validate repo format (should be workspace/repo_slug)
+    if (!/^\w[\w-]*\/\w[\w-]*$/.test(repo)) {
+      errorMsg.textContent = 'Repository must be in workspace/repo_slug format.';
+      loading.style.display = 'none';
+      return;
+    }
+    if (!/^\d+$/.test(prNumber)) {
+      errorMsg.textContent = 'PR number must be a valid number.';
+      loading.style.display = 'none';
+      return;
+    }
 
     try {
       // Placeholder for backend API call

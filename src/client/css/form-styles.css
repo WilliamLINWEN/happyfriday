@@ -48,11 +48,21 @@
   font-size: 0.95rem;
 }
 #pr-description-container {
-  margin-top: 24px;
+  margin-top: 20px;
   padding: 16px;
-  background: #f4f5f7;
+  background: #f7f7f7;
   border-radius: 4px;
-  min-height: 60px;
-  font-family: monospace;
-  white-space: pre-wrap;
+  min-height: 48px;
+  font-size: 1rem;
+  color: #222;
+  word-break: break-word;
+}
+@media (max-width: 600px) {
+  .form-container {
+    max-width: 98vw;
+    padding: 12px;
+  }
+  #pr-form input, #pr-form button {
+    font-size: 0.98rem;
+  }
 }

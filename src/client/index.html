@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitbucket PR Description Generator</title>
+  <link rel="stylesheet" href="css/form-styles.css" />
+</head>
+<body>
+  <div class="form-container">
+    <h1>Bitbucket PR Description Generator</h1>
+    <form id="pr-form">
+      <label for="repo">Repository (workspace/repo_slug)</label>
+      <input type="text" id="repo" name="repo" placeholder="e.g. myteam/myrepo" required />
+      <label for="pr-number">PR Number</label>
+      <input type="number" id="pr-number" name="pr-number" placeholder="e.g. 42" required />
+      <button type="submit">Generate Description</button>
+      <div id="loading-indicator" style="display:none;">Loading...</div>
+      <div id="error-message" class="form-error"></div>
+    </form>
+    <div id="pr-description-container"></div>
+  </div>
+  <script src="js/formHandler.js"></script>
+</body>
+</html>
