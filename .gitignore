@@ -1,0 +1,12 @@
+
+.vscode
+
+.github
+
+.shrimp_data
+
+
+# Dependency directories
+node_modules/
+
+.eslintrc.js
