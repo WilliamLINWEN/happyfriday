@@ -14,7 +14,7 @@ export class ClaudeService implements ILLMService {
   constructor() {
     this.apiKey = process.env.CLAUDE_API_KEY || '';
     this.baseURL = 'https://api.anthropic.com/v1';
-    this.defaultModel = 'claude-3-sonnet-20240229';
+    this.defaultModel =  process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229';
   }
 
   async generateDescription(request: TLLMRequest): Promise<TLLMResponse> {

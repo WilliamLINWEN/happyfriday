@@ -32,7 +32,7 @@ class OllamaService {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                timeout: 50000, // 30 second timeout for Ollama
+                timeout: 60000, // 30 second timeout for Ollama
             });
             const responseData = response.data;
             const generatedText = responseData.response;

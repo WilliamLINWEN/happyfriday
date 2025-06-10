@@ -14,7 +14,7 @@ class OpenAIService {
     constructor() {
         this.apiKey = process.env.OPENAI_API_KEY || '';
         this.baseURL = 'https://api.openai.com/v1';
-        this.defaultModel = 'gpt-3.5-turbo';
+        this.defaultModel = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
     }
     async generateDescription(request) {
         try {
