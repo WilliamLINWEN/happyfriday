@@ -3,42 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateDescription = generateDescription;
 const bitbucket_service_1 = require("../services/bitbucket-service");
 const llm_service_registry_1 = require("../services/llm-service-registry");
-const llm_types_1 = require("../../types/llm-types");
 const response_formatter_1 = require("../utils/response-formatter");
-function validateGenerateDescriptionRequest(body) {
-    const errors = [];
-    if (!body.repository || typeof body.repository !== 'string') {
-        errors.push('Repository is required and must be a string');
-    }
-    else if (!(0, bitbucket_service_1.validateRepo)(body.repository)) {
-        errors.push('Repository must be in format "workspace/repo_slug"');
-    }
-    if (!body.prNumber || typeof body.prNumber !== 'string') {
-        errors.push('PR number is required and must be a string');
-    }
-    else if (!(0, bitbucket_service_1.validatePrNumber)(body.prNumber)) {
-        errors.push('PR number must be a valid number');
-    }
-    if (body.provider && !Object.values(llm_types_1.TLLMProvider).includes(body.provider)) {
-        errors.push('Provider must be one of: openai, claude, ollama');
-    }
-    if (body.options) {
-        if (body.options.maxTokens && (typeof body.options.maxTokens !== 'number' || body.options.maxTokens < 1 || body.options.maxTokens > 4000)) {
-            errors.push('maxTokens must be a number between 1 and 4000');
-        }
-        if (body.options.temperature && (typeof body.options.temperature !== 'number' || body.options.temperature < 0 || body.options.temperature > 2)) {
-            errors.push('temperature must be a number between 0 and 2');
-        }
-    }
-    return errors;
-}
+const input_validator_1 = require("../utils/input-validator");
 async function generateDescription(req, res, next) {
     try {
         const startTime = Date.now();
         // Validate request body
-        const validationErrors = validateGenerateDescriptionRequest(req.body);
-        if (validationErrors.length > 0) {
-            res.status(400).json((0, response_formatter_1.formatValidationErrorResponse)(validationErrors));
+        const validationResult = (0, input_validator_1.validateGenerateDescriptionRequest)(req.body);
+        if (!validationResult.isValid) {
+            res.status(400).json((0, response_formatter_1.formatValidationErrorResponse)(validationResult.errors));
             return;
         }
         const { repository, prNumber, provider, options } = req.body;

@@ -262,20 +262,20 @@ export class InputValidator {
     const result: TValidationResult = { isValid: true, errors: [] };
 
     // Validate request size first
-    const sizeValidation = this.validateRequestSize(body);
+    const sizeValidation = InputValidator.validateRequestSize(body);
     if (!sizeValidation.isValid) {
       return sizeValidation;
     }
 
     // Validate repository
-    const repoValidation = this.validateRepository(body.repository);
+    const repoValidation = InputValidator.validateRepository(body.repository);
     if (!repoValidation.isValid) {
       result.isValid = false;
       result.errors.push(...repoValidation.errors);
     }
 
     // Validate PR number
-    const prValidation = this.validatePRNumber(body.prNumber);
+    const prValidation = InputValidator.validatePRNumber(body.prNumber);
     if (!prValidation.isValid) {
       result.isValid = false;
       result.errors.push(...prValidation.errors);
@@ -283,7 +283,7 @@ export class InputValidator {
 
     // Validate provider (optional)
     if (body.provider) {
-      const providerValidation = this.validateProvider(body.provider);
+      const providerValidation = InputValidator.validateProvider(body.provider);
       if (!providerValidation.isValid) {
         result.isValid = false;
         result.errors.push(...providerValidation.errors);
@@ -323,13 +323,11 @@ export class InputValidator {
 }
 
 // Export utility functions for convenience
-export const { 
-  escapeHtml, 
-  sanitizeString, 
-  validateRepository, 
-  validatePRNumber, 
-  validateProvider,
-  validateString,
-  validateRequestSize,
-  validateGenerateDescriptionRequest
-} = InputValidator;
+export const escapeHtml = InputValidator.escapeHtml;
+export const sanitizeString = InputValidator.sanitizeString;
+export const validateRepository = InputValidator.validateRepository;
+export const validatePRNumber = InputValidator.validatePRNumber;
+export const validateProvider = InputValidator.validateProvider;
+export const validateString = InputValidator.validateString;
+export const validateRequestSize = InputValidator.validateRequestSize;
+export const validateGenerateDescriptionRequest = InputValidator.validateGenerateDescriptionRequest;

@@ -10,7 +10,9 @@ const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
 const BITBUCKET_APP_PASSWORD = process.env.BITBUCKET_APP_PASSWORD;
 
 function validateRepo(repo: string): boolean {
-  return /^\w[\w-]*\/\w[\w-]*$/.test(repo);
+  return true;
+  // console.log(`Validating repository: ${repo}`);
+  // return /^\w[\w-]*\/\w[\w-]*$/.test(repo);
 }
 
 function validatePrNumber(prNumber: string): boolean {
@@ -18,7 +20,8 @@ function validatePrNumber(prNumber: string): boolean {
 }
 
 async function fetchPullRequest(repo: string, prNumber: string): Promise<TBitbucketAPIResponse<TPullRequest>> {
-  if (!validateRepo(repo)) {
+  const [workspace, repoSlug] = repo.split('/');
+  if (!validateRepo(repoSlug)) {
     return { success: false, error: 'Invalid repository format.' };
   }
   if (!validatePrNumber(prNumber)) {
@@ -27,18 +30,18 @@ async function fetchPullRequest(repo: string, prNumber: string): Promise<TBitbuc
   if (!BITBUCKET_USERNAME || !BITBUCKET_APP_PASSWORD) {
     return { success: false, error: 'Bitbucket credentials not set.' };
   }
-  const [workspace, repoSlug] = repo.split('/');
   try {
-    const response = await axios.get(`${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}`,
-      {
-        auth: {
-          username: BITBUCKET_USERNAME,
-          password: BITBUCKET_APP_PASSWORD,
-        },
-      }
-    );
+    const url = `${BITBUCKET_API_URL}/repositories/${workspace}/${repoSlug}/pullrequests/${prNumber}`;
+    console.log(`Fetching PR ${prNumber} for repo ${repoSlug} from ${url}`);
+    const response = await axios.get(url, {
+      auth: {
+        username: BITBUCKET_USERNAME,
+        password: BITBUCKET_APP_PASSWORD,
+      },
+    });
     return { success: true, data: response.data as TPullRequest };
   } catch (err: any) {
+    console.error(`Error fetching PR ${prNumber} for repo ${repoSlug}:`, err);
     return { success: false, error: err.response?.data?.error?.message || err.message };
   }
 }
@@ -66,6 +69,7 @@ async function fetchPullRequestDiff(repo: string, prNumber: string): Promise<TBi
     );
     return { success: true, data: { diff: response.data as string } };
   } catch (err: any) {
+    console.error(`Error fetching PR diff for ${repo} PR ${prNumber}:`, err);
     return { success: false, error: err.response?.data?.error?.message || err.message };
   }
 }

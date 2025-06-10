@@ -70,8 +70,8 @@ app.get('/api/providers', asyncErrorHandler(getAvailableProviders));
 // Apply stricter rate limiting to the main API endpoint
 app.post('/api/generate-description', createAPIRateLimit(), asyncErrorHandler(generateDescription));
 
-// Root endpoint
-app.get('/', (req, res) => {
+// API info endpoint (moved from root to avoid conflict with static files)
+app.get('/api', (req, res) => {
   res.json({
     name: 'Bitbucket PR Description Generator API',
     version: '1.0.0',
@@ -96,7 +96,8 @@ app.listen(PORT, () => {
     version: '1.0.0'
   });
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📖 API documentation available at http://localhost:${PORT}/`);
+  console.log(`🌐 Web interface available at http://localhost:${PORT}/`);
+  console.log(`📖 API documentation available at http://localhost:${PORT}/api`);
   console.log(`🔒 Security middleware enabled`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

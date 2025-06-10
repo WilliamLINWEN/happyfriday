@@ -54,7 +54,7 @@ function sanitizeInput(input) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
+    // Note: Don't sanitize forward slashes for repository names as they are legitimate
     .trim();
 }
 

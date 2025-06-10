@@ -167,22 +167,29 @@ export function suspiciousPatternMiddleware() {
     /on\w+\s*=/gi,
     
     // Path traversal patterns
-    /\.\.[\/\\]/g,
-    
-    // Command injection patterns
-    /[;&|`$(){}[\]]/g
+    /\.\.[\/\\]/g
+  ];
+
+  // Command injection patterns - only check specific fields, not headers
+  const commandInjectionPatterns = [
+    /[;&|`$]/g, // Simplified pattern, removed parentheses and brackets which are common in headers
+    /\$\{.*\}/g, // Template injection
+    /\|\s*[a-zA-Z]/g // Pipe with commands
   ];
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const requestData = JSON.stringify({
+    // Only check user-controllable data, not headers which may contain legitimate special characters
+    const userControllableData = {
       url: req.url,
       query: req.query,
-      body: req.body,
-      headers: req.headers
-    });
+      body: req.body
+    };
 
+    const requestDataString = JSON.stringify(userControllableData);
+
+    // Check general suspicious patterns against all user data
     for (const pattern of suspiciousPatterns) {
-      if (pattern.test(requestData)) {
+      if (pattern.test(requestDataString)) {
         const error = createSecurityError(
           'Suspicious request pattern detected',
           { 
@@ -196,7 +203,32 @@ export function suspiciousPatternMiddleware() {
           url: req.url,
           ip: req.ip,
           userAgent: req.get('User-Agent'),
-          requestData: process.env.NODE_ENV === 'development' ? requestData : '[redacted]'
+          requestData: process.env.NODE_ENV === 'development' ? requestDataString : '[redacted]'
+        });
+
+        next(error);
+        return;
+      }
+    }
+
+    // Check command injection patterns only against URL and query parameters (not body)
+    const urlAndQuery = `${req.url} ${JSON.stringify(req.query)}`;
+    for (const pattern of commandInjectionPatterns) {
+      if (pattern.test(urlAndQuery)) {
+        const error = createSecurityError(
+          'Suspicious command injection pattern detected',
+          { 
+            pattern: pattern.toString(),
+            requestId: (req as any).requestId 
+          }
+        );
+
+        logWarn('Suspicious request blocked', {
+          pattern: pattern.toString(),
+          url: req.url,
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          requestData: process.env.NODE_ENV === 'development' ? urlAndQuery : '[redacted]'
         });
 
         next(error);
