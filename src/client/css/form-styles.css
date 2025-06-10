@@ -44,13 +44,42 @@
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
-#pr-form button:hover {
+#pr-form button:hover:not(:disabled) {
   background: #0065ff;
+}
+#pr-form button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 #loading-indicator {
   margin-top: 12px;
-  color: #888;
+  color: #0052cc;
+  font-weight: 500;
+  padding: 8px;
+  background: #f0f4f8;
+  border-radius: 4px;
+  border-left: 4px solid #0052cc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#loading-indicator::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e0e7ed;
+  border-top: 2px solid #0052cc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 .form-error {
   color: #d32f2f;

@@ -1,4 +1,4 @@
-// formHandler.js - Handles form submission and API communication
+// formHandler.js - Fixed version with proper submit button loading behavior
 
 // Enhanced validation patterns matching backend security
 const VALIDATION_PATTERNS = {
@@ -194,6 +194,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const descContainer = document.getElementById('pr-description-container');
   const providerSelect = document.getElementById('provider');
 
+  if (!form) {
+    console.error('Form element not found!');
+    return;
+  }
+
   // Check available providers on page load
   checkAvailableProviders();
 
@@ -229,14 +234,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Function to handle loading state for submit button
+  function setLoadingState(isLoading, button, originalText) {
+    console.log('setLoadingState:', { isLoading, button: !!button, originalText });
+    
+    if (!button) {
+      console.error('Button not provided to setLoadingState');
+      return;
+    }
+    
+    if (isLoading) {
+      button.disabled = true;
+      button.textContent = 'Generating...';
+      button.style.opacity = '0.7';
+      button.style.cursor = 'not-allowed';
+      button.style.background = '#94a3b8';
+      console.log('Button set to loading state');
+    } else {
+      button.disabled = false;
+      button.textContent = originalText || 'Generate Description';
+      button.style.opacity = '1';
+      button.style.cursor = 'pointer';
+      button.style.background = '#0052cc';
+      console.log('Button restored to normal state');
+    }
+  }
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
+    console.log('Form submitted');
+    
+    // Clear previous messages
     errorMsg.textContent = '';
     descContainer.innerHTML = '';
     
-    // Get submit button and store original text early
+    // Get submit button and store original text FIRST
     const submitButton = form.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton.textContent;
+    const originalButtonText = submitButton ? submitButton.textContent : 'Generate Description';
+    
+    console.log('Submit button found:', !!submitButton, 'Original text:', originalButtonText);
     
     // Get and sanitize input values
     const repo = sanitizeInput(form.repo.value.trim());
@@ -246,11 +282,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Enhanced client-side validation
     const validationErrors = validateFormInput(repo, prNumber);
     if (validationErrors.length > 0) {
+      console.log('Validation errors:', validationErrors);
       displayError(validationErrors.join('. '));
-      return;
+      return; // Exit early on validation error
     }
     
-    // Start loading state
+    // Only start loading state after validation passes
+    console.log('Starting loading state...');
     setLoadingState(true, submitButton, originalButtonText);
     loading.style.display = 'block';
     loading.textContent = 'Fetching PR data from Bitbucket...';
@@ -265,6 +303,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Make API call to backend with enhanced error handling
       loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
+      
       const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GENERATE_DESCRIPTION}`, {
         method: 'POST',
         headers: {
@@ -311,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (data.success && data.data) {
         // Display the generated description
         displayPRDescription(data.data);
+        console.log('Successfully displayed PR description');
       } else {
         throw new Error(data.error || 'Failed to generate PR description');
       }
@@ -326,24 +366,12 @@ document.addEventListener('DOMContentLoaded', function () {
         errorMsg.textContent = err.message || 'Failed to generate PR description. Please try again.';
       }
     } finally {
-      // Reset loading state
+      // Always reset loading state in finally block
+      console.log('Resetting loading state...');
       setLoadingState(false, submitButton, originalButtonText);
       loading.style.display = 'none';
     }
   });
 
-  // Function to handle loading state for submit button
-  function setLoadingState(isLoading, button, originalText) {
-    if (isLoading) {
-      button.disabled = true;
-      button.textContent = 'Generating...';
-      button.style.opacity = '0.7';
-      button.style.cursor = 'not-allowed';
-    } else {
-      button.disabled = false;
-      button.textContent = originalText;
-      button.style.opacity = '1';
-      button.style.cursor = 'pointer';
-    }
-  }
+  console.log('Form handler setup complete');
 });
