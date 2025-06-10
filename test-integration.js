@@ -3,12 +3,12 @@
 const axios = require('axios');
 
 async function testIntegration() {
-  console.log('🧪 Testing Frontend-Backend Integration...\n');
+  console.log('🧪 Testing Frontend-Backend Integration with Template Service...\n');
 
   try {
     // Test 1: Check if server is running
     console.log('1. Testing server health...');
-    const healthResponse = await axios.get('http://localhost:3000/health');
+    const healthResponse = await axios.get('http://localhost:3000/api/health');
     console.log('✅ Server is running:', healthResponse.data);
 
     // Test 2: Check available providers
@@ -16,9 +16,23 @@ async function testIntegration() {
     const providersResponse = await axios.get('http://localhost:3000/api/providers');
     console.log('✅ Providers endpoint working:', providersResponse.data);
 
-    // Test 3: Test static file serving
-    console.log('\n3. Testing static file serving...');
-    const indexResponse = await axios.get('http://localhost:3000/');
+    // Test 3: Test PR description generation with template
+    console.log('\n3. Testing PR description generation with new template...');
+    const prData = {
+      repoFullName: 'starlinglabs/product-service-sdk',
+      prNumber: '215',
+      provider: 'ollama'
+    };
+    
+    const prResponse = await axios.post('http://localhost:3000/api/generate-description', prData);
+    
+    if (prResponse.data.success) {
+      console.log('✅ PR description generated successfully with template!');
+      console.log('Description length:', prResponse.data.description.length);
+      console.log('First 200 characters:', prResponse.data.description.substring(0, 200));
+    } else {
+      console.log('❌ PR description generation failed:', prResponse.data.error);
+    }
     if (indexResponse.status === 200) {
       console.log('✅ Static files are being served correctly');
     }

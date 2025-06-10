@@ -1,6 +1,7 @@
 // Base LLM service interface and implementation
 import dotenv from 'dotenv';
 import { TLLMProvider, TLLMRequest, TLLMResponse, ILLMService, TLLMPromptData } from '../../types/llm-types';
+import { TemplateService } from './template-service';
 
 dotenv.config();
 
@@ -62,32 +63,7 @@ export class LLMService {
   }
 
   static formatPRDataForPrompt(prData: TLLMPromptData): string {
-    return `Please generate a comprehensive pull request description based on the following information:
-
-**Pull Request Title:** ${prData.title}
-
-**Current Description:** ${prData.description || 'No description provided'}
-
-**Author:** ${prData.author}
-
-**Repository:** ${prData.repository}
-
-**Source Branch:** ${prData.sourceBranch}
-
-**Destination Branch:** ${prData.destinationBranch}
-
-**Changes (diff):**
-\`\`\`diff
-${prData.diff}
-\`\`\`
-
-Please provide a well-structured description that includes:
-1. A brief summary of what this PR does
-2. Key changes made
-3. Any notable technical details
-4. Impact on the codebase
-
-Format the response in markdown and keep it professional and concise.`;
+    return TemplateService.formatPRDataForPrompt(prData);
   }
 
   static processLLMResponse(response: string): string {

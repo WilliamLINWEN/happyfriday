@@ -10,8 +10,9 @@
     "start": "npm run build && node dist/server/index.js",
     "dev": "ts-node src/server/index.ts",
     "dev:watch": "nodemon src/server/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-templates",
     "build:watch": "tsc --watch",
+    "copy-templates": "copyfiles -u 1 \"src/templates/**/*\" dist/",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit"
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@types/axios": "^0.9.36",
     "@types/express": "^5.0.3",
+    "copyfiles": "^2.4.1",
     "dotenv": "^16.5.0",
     "eslint": "^9.28.0",
     "express": "^5.1.0",

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LLMService = void 0;
 // Base LLM service interface and implementation
 const dotenv_1 = __importDefault(require("dotenv"));
+const template_service_1 = require("./template-service");
 dotenv_1.default.config();
 class LLMService {
     constructor() {
@@ -57,32 +58,7 @@ class LLMService {
         return availableProviders;
     }
     static formatPRDataForPrompt(prData) {
-        return `Please generate a comprehensive pull request description based on the following information:
-
-**Pull Request Title:** ${prData.title}
-
-**Current Description:** ${prData.description || 'No description provided'}
-
-**Author:** ${prData.author}
-
-**Repository:** ${prData.repository}
-
-**Source Branch:** ${prData.sourceBranch}
-
-**Destination Branch:** ${prData.destinationBranch}
-
-**Changes (diff):**
-\`\`\`diff
-${prData.diff}
-\`\`\`
-
-Please provide a well-structured description that includes:
-1. A brief summary of what this PR does
-2. Key changes made
-3. Any notable technical details
-4. Impact on the codebase
-
-Format the response in markdown and keep it professional and concise.`;
+        return template_service_1.TemplateService.formatPRDataForPrompt(prData);
     }
     static processLLMResponse(response) {
         // Clean up and format the LLM response
@@ -112,6 +88,7 @@ Format the response in markdown and keep it professional and concise.`;
             // Other error
             errorMessage = error.message || errorMessage;
         }
+        console.error(`Error from ${provider} service:`, errorMessage);
         return {
             success: false,
             error: `${provider} service error: ${errorMessage}`
