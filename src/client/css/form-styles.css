@@ -1,0 +1,58 @@
+/* form-styles.css - styles for Bitbucket PR Description Generator */
+.form-container {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.form-container h1 {
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+}
+#pr-form label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 500;
+}
+#pr-form input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+#pr-form button {
+  margin-top: 16px;
+  width: 100%;
+  padding: 10px;
+  background: #0052cc;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#pr-form button:hover {
+  background: #0065ff;
+}
+#loading-indicator {
+  margin-top: 12px;
+  color: #888;
+}
+.form-error {
+  color: #d32f2f;
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+#pr-description-container {
+  margin-top: 24px;
+  padding: 16px;
+  background: #f4f5f7;
+  border-radius: 4px;
+  min-height: 60px;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
