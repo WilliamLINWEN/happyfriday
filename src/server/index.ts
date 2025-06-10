@@ -5,24 +5,58 @@ import dotenv from 'dotenv';
 import { generateDescription } from './api/generate-description';
 import { healthCheck, getAvailableProviders } from './api/health';
 import { errorHandler, notFoundHandler } from './middleware/error-middleware';
+import { createGeneralRateLimit, createAPIRateLimit } from './middleware/rate-limiter';
+import { 
+  globalErrorHandler, 
+  notFoundHandler as newNotFoundHandler, 
+  requestIdMiddleware, 
+  handleUncaughtErrors,
+  asyncErrorHandler 
+} from './middleware/error-handler';
+import { 
+  securityHeadersMiddleware, 
+  corsSecurityMiddleware, 
+  requestSizeMiddleware,
+  suspiciousPatternMiddleware,
+  userAgentValidationMiddleware 
+} from './middleware/security';
+import { logInfo } from './utils/logger';
 
 dotenv.config();
+
+// Initialize uncaught error handlers
+handleUncaughtErrors();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
-}));
+// Security and request middleware (order matters!)
+app.use(requestIdMiddleware);
+app.use(securityHeadersMiddleware());
+app.use(corsSecurityMiddleware(process.env.ALLOWED_ORIGINS?.split(',') || ['*']));
+app.use(userAgentValidationMiddleware());
+app.use(requestSizeMiddleware(parseInt(process.env.MAX_REQUEST_SIZE || '1048576'))); // 1MB default
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Apply general rate limiting to all requests
+app.use(createGeneralRateLimit());
+
+// Body parsing middleware
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Additional security middleware
+app.use(suspiciousPatternMiddleware());
 
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const requestId = (req as any).requestId;
+  logInfo('Incoming request', {
+    method: req.method,
+    url: req.url,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    requestId
+  });
   next();
 });
 
@@ -30,9 +64,11 @@ app.use((req, res, next) => {
 app.use(express.static('src/client'));
 
 // API Routes
-app.get('/health', healthCheck);
-app.get('/api/providers', getAvailableProviders);
-app.post('/api/generate-description', generateDescription);
+app.get('/health', asyncErrorHandler(healthCheck));
+app.get('/api/providers', asyncErrorHandler(getAvailableProviders));
+
+// Apply stricter rate limiting to the main API endpoint
+app.post('/api/generate-description', createAPIRateLimit(), asyncErrorHandler(generateDescription));
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -49,12 +85,18 @@ app.get('/', (req, res) => {
 });
 
 // Error handling middleware (must be last)
-app.use(notFoundHandler);
-app.use(errorHandler);
+app.use(newNotFoundHandler);
+app.use(globalErrorHandler);
 
 // Start server
 app.listen(PORT, () => {
+  logInfo('Server started', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
+  });
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📖 API documentation available at http://localhost:${PORT}/`);
+  console.log(`🔒 Security middleware enabled`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -1,10 +1,12 @@
 // API endpoint for PR description generation
 import { Request, Response, NextFunction } from 'express';
-import { fetchPullRequest, fetchPullRequestDiff, validateRepo, validatePrNumber } from '../services/bitbucket-service';
+import { fetchPullRequest, fetchPullRequestDiff } from '../services/bitbucket-service';
 import { getLLMService } from '../services/llm-service-registry';
 import { TLLMProvider, TLLMRequest } from '../../types/llm-types';
 import { formatSuccessResponse, formatErrorResponse, formatValidationErrorResponse } from '../utils/response-formatter';
 import { AppError, createValidationError, createServiceUnavailableError } from '../utils/error-handler';
+import { validateGenerateDescriptionRequest } from '../utils/input-validator';
+import { logInfo, logWarn } from '../utils/logger';
 
 interface TGenerateDescriptionRequest {
   repository: string;
@@ -17,45 +19,14 @@ interface TGenerateDescriptionRequest {
   };
 }
 
-function validateGenerateDescriptionRequest(body: any): string[] {
-  const errors: string[] = [];
-
-  if (!body.repository || typeof body.repository !== 'string') {
-    errors.push('Repository is required and must be a string');
-  } else if (!validateRepo(body.repository)) {
-    errors.push('Repository must be in format "workspace/repo_slug"');
-  }
-
-  if (!body.prNumber || typeof body.prNumber !== 'string') {
-    errors.push('PR number is required and must be a string');
-  } else if (!validatePrNumber(body.prNumber)) {
-    errors.push('PR number must be a valid number');
-  }
-
-  if (body.provider && !Object.values(TLLMProvider).includes(body.provider)) {
-    errors.push('Provider must be one of: openai, claude, ollama');
-  }
-
-  if (body.options) {
-    if (body.options.maxTokens && (typeof body.options.maxTokens !== 'number' || body.options.maxTokens < 1 || body.options.maxTokens > 4000)) {
-      errors.push('maxTokens must be a number between 1 and 4000');
-    }
-    if (body.options.temperature && (typeof body.options.temperature !== 'number' || body.options.temperature < 0 || body.options.temperature > 2)) {
-      errors.push('temperature must be a number between 0 and 2');
-    }
-  }
-
-  return errors;
-}
-
 export async function generateDescription(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const startTime = Date.now();
 
     // Validate request body
-    const validationErrors = validateGenerateDescriptionRequest(req.body);
-    if (validationErrors.length > 0) {
-      res.status(400).json(formatValidationErrorResponse(validationErrors));
+    const validationResult = validateGenerateDescriptionRequest(req.body);
+    if (!validationResult.isValid) {
+      res.status(400).json(formatValidationErrorResponse(validationResult.errors));
       return;
     }
 

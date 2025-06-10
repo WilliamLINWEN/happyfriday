@@ -1,5 +1,100 @@
 // formHandler.js - Handles form submission and API communication
 
+// Enhanced validation patterns matching backend security
+const VALIDATION_PATTERNS = {
+  repository: /^[a-zA-Z0-9_\-\.\/]{1,100}$/,
+  prNumber: /^[1-9]\d{0,5}$/, // 1 to 999999
+  suspiciousPatterns: [
+    /<script[^>]*>.*?<\/script>/gi,
+    /javascript:/gi,
+    /on\w+\s*=/gi,
+    /\.\.[\/\\]/g,
+    /[;&|`$(){}[\]]/g
+  ]
+};
+
+// Enhanced input validation
+function validateFormInput(repository, prNumber) {
+  const errors = [];
+  
+  // Repository validation
+  if (!repository) {
+    errors.push('Repository is required');
+  } else if (!VALIDATION_PATTERNS.repository.test(repository)) {
+    errors.push('Repository format is invalid. Use format: username/repository');
+  } else {
+    // Check for suspicious patterns
+    for (const pattern of VALIDATION_PATTERNS.suspiciousPatterns) {
+      if (pattern.test(repository)) {
+        errors.push('Repository contains invalid characters');
+        break;
+      }
+    }
+  }
+  
+  // PR Number validation
+  if (!prNumber) {
+    errors.push('PR number is required');
+  } else if (!VALIDATION_PATTERNS.prNumber.test(prNumber)) {
+    errors.push('PR number must be between 1 and 999999');
+  }
+  
+  return errors;
+}
+
+// Sanitize input to prevent XSS
+function sanitizeInput(input) {
+  if (typeof input !== 'string') {
+    return '';
+  }
+  
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    .trim();
+}
+
+// Enhanced error display with better security
+function displayError(message, isTemporary = false) {
+  const errorContainer = document.getElementById('error-container') || createErrorContainer();
+  
+  // Sanitize error message
+  const safeMessage = sanitizeInput(message);
+  
+  errorContainer.innerHTML = `
+    <div class="alert alert-error" role="alert">
+      <span class="error-icon">⚠️</span>
+      <span class="error-message">${safeMessage}</span>
+      <button class="error-close" onclick="this.parentElement.parentElement.style.display='none'" aria-label="Close error">×</button>
+    </div>
+  `;
+  
+  errorContainer.style.display = 'block';
+  
+  // Auto-hide temporary errors
+  if (isTemporary) {
+    setTimeout(() => {
+      errorContainer.style.display = 'none';
+    }, 5000);
+  }
+}
+
+function createErrorContainer() {
+  const container = document.createElement('div');
+  container.id = 'error-container';
+  container.className = 'error-container';
+  container.style.display = 'none';
+  
+  const form = document.getElementById('pr-form');
+  form.parentNode.insertBefore(container, form);
+  
+  return container;
+}
+
 // Function to display PR description with metadata
 function displayPRDescription(data) {
   const descContainer = document.getElementById('pr-description-container');
@@ -138,42 +233,31 @@ document.addEventListener('DOMContentLoaded', function () {
     e.preventDefault();
     errorMsg.textContent = '';
     descContainer.innerHTML = '';
+    
+    // Get and sanitize input values
+    const repo = sanitizeInput(form.repo.value.trim());
+    const prNumber = sanitizeInput(form['pr-number'].value.trim());
+    const provider = form.provider.value;
+    
+    // Enhanced client-side validation
+    const validationErrors = validateFormInput(repo, prNumber);
+    if (validationErrors.length > 0) {
+      displayError(validationErrors.join('. '));
+      return;
+    }
+    
     loading.style.display = 'block';
     loading.textContent = 'Fetching PR data from Bitbucket...';
 
-    const repo = form.repo.value.trim();
-    const prNumber = form['pr-number'].value.trim();
-    const provider = form.provider.value;
-    
-    if (!repo || !prNumber) {
-      errorMsg.textContent = 'Repository and PR number are required.';
-      loading.style.display = 'none';
-      return;
-    }
-    // Validate repo format (should be workspace/repo_slug)
-    if (!/^\w[\w-]*\/\w[\w-]*$/.test(repo)) {
-      errorMsg.textContent = 'Repository must be in workspace/repo_slug format.';
-      loading.style.display = 'none';
-      return;
-    }
-    if (!/^\d+$/.test(prNumber)) {
-      errorMsg.textContent = 'PR number must be a valid number.';
-      loading.style.display = 'none';
-      return;
-    }
-
     try {
-      // Parse repository to get workspace and repo_slug
-      const [workspace, repoSlug] = repo.split('/');
-      
-      // Prepare request payload
+      // Prepare request payload with sanitized data
       const requestPayload = {
         repository: repo,
         prNumber: prNumber,
-        provider: provider // Use the selected provider
+        provider: provider
       };
 
-      // Make API call to backend
+      // Make API call to backend with enhanced error handling
       loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
       const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GENERATE_DESCRIPTION}`, {
         method: 'POST',
@@ -185,22 +269,34 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ 
+          success: false, 
+          error: { message: 'Unknown error' } 
+        }));
         
-        // Handle specific HTTP status codes
+        // Handle specific HTTP status codes with better error messages
         switch (response.status) {
           case 400:
-            throw new Error(`Invalid request: ${errorData.error || 'Please check your input.'}`);
+            const message = errorData.error?.message || errorData.error || 'Invalid request. Please check your input.';
+            throw new Error(message);
           case 401:
             throw new Error('Authentication failed. Please check API credentials.');
+          case 403:
+            throw new Error('Access denied. Please check your permissions.');
           case 404:
             throw new Error('PR not found. Please check the repository and PR number.');
           case 429:
-            throw new Error('Rate limit exceeded. Please try again later.');
+            const retryAfter = response.headers.get('Retry-After');
+            const retryMessage = retryAfter ? ` Please try again in ${retryAfter} seconds.` : ' Please try again later.';
+            throw new Error('Rate limit exceeded.' + retryMessage);
+          case 500:
+            throw new Error('Server error. Please try again later.');
+          case 502:
+            throw new Error('Bad gateway. The server is temporarily unavailable.');
           case 503:
             throw new Error('Service temporarily unavailable. Please try again later.');
           default:
-            throw new Error(errorData.error || `Server error (${response.status}). Please try again.`);
+            throw new Error(errorData.error?.message || errorData.error || `Server error (${response.status}). Please try again.`);
         }
       }
 
