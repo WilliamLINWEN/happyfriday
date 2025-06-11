@@ -36,6 +36,7 @@ export type TLLMResponse = {
 
 export interface ILLMService {
   generateDescription(request: TLLMRequest): Promise<TLLMResponse>;
+  generateDescriptionWithCallback?(request: TLLMRequest, onToken?: (token: string) => void): Promise<TLLMResponse>;
   isAvailable(): Promise<boolean>;
   getProviderName(): TLLMProvider;
 }

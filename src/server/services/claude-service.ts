@@ -1,52 +1,66 @@
-// Claude API integration
-import axios from 'axios';
+import { ChatAnthropic } from '@langchain/anthropic';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { StringOutputParser } from '@langchain/core/output_parsers';
 import dotenv from 'dotenv';
 import { TLLMProvider, TLLMRequest, TLLMResponse, ILLMService } from '../../types/llm-types';
 import { LLMService } from './llm-service';
+import { TemplateService } from './template-service';
 
 dotenv.config();
 
 export class ClaudeService implements ILLMService {
   private apiKey: string;
-  private baseURL: string;
   private defaultModel: string;
+  private llm: ChatAnthropic;
 
   constructor() {
     this.apiKey = process.env.CLAUDE_API_KEY || '';
-    this.baseURL = 'https://api.anthropic.com/v1';
-    this.defaultModel =  process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229';
+    this.defaultModel = process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022';
+    
+    // Initialize LangChain ChatAnthropic instance
+    this.llm = new ChatAnthropic({
+      apiKey: this.apiKey,
+      model: this.defaultModel,
+      temperature: 0.7,
+      maxTokens: 1000
+    });
   }
 
   async generateDescription(request: TLLMRequest): Promise<TLLMResponse> {
     try {
       const model = request.options?.model || this.defaultModel;
       const maxTokens = request.options?.maxTokens || 1000;
+      const temperature = request.options?.temperature || 0.7;
 
-      const prompt = LLMService.formatPRDataForPrompt(request.prData);
+      // Update LLM configuration if options provided
+      const llm = new ChatAnthropic({
+        apiKey: this.apiKey,
+        model,
+        temperature,
+        maxTokens
+      });
 
-      const response = await axios.post(
-        `${this.baseURL}/messages`,
-        {
-          model,
-          max_tokens: maxTokens,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-        },
-        {
-          headers: {
-            'x-api-key': this.apiKey,
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-          },
-        }
-      );
+      // Use enhanced template service with LangChain integration
+      const systemMessage = 'You are a helpful assistant that generates comprehensive pull request descriptions based on code changes and PR information.';
+      const chatTemplate = TemplateService.createChatTemplate(systemMessage, 'pr-description-template.txt');
 
-      const responseData = response.data as any;
-      const generatedText = responseData.content[0]?.text;
+      // Create the chain: PromptTemplate -> LLM -> StringOutputParser
+      const chain = chatTemplate.pipe(llm).pipe(new StringOutputParser());
+
+      // Prepare template variables
+      const templateVariables = {
+        title: request.prData.title,
+        description: request.prData.description || '無描述提供',
+        author: request.prData.author,
+        repository: request.prData.repository,
+        sourceBranch: request.prData.sourceBranch,
+        destinationBranch: request.prData.destinationBranch,
+        diff: request.prData.diff
+      };
+
+      // Execute the chain
+      const generatedText = await chain.invoke(templateVariables);
+
       if (!generatedText) {
         return {
           success: false,
@@ -54,6 +68,7 @@ export class ClaudeService implements ILLMService {
         };
       }
 
+      // Process response using existing service method
       const processedResponse = LLMService.processLLMResponse(generatedText);
 
       return {
@@ -75,32 +90,19 @@ export class ClaudeService implements ILLMService {
     }
 
     try {
-      // Test API availability with a minimal request
-      await axios.post(
-        `${this.baseURL}/messages`,
-        {
-          model: this.defaultModel,
-          max_tokens: 1,
-          messages: [
-            {
-              role: 'user',
-              content: 'test'
-            }
-          ],
-        },
-        {
-          headers: {
-            'x-api-key': this.apiKey,
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
-          },
-          timeout: 5000, // 5 second timeout
-        }
-      );
+      // Test API availability using LangChain
+      const testLLM = new ChatAnthropic({
+        apiKey: this.apiKey,
+        model: this.defaultModel,
+        maxTokens: 1
+      });
+
+      // Simple test prompt
+      await testLLM.invoke([{ role: 'user', content: 'test' }]);
       return true;
     } catch (error: any) {
       // If it's a 400 error with our test request, the API is available
-      if (error.response?.status === 400) {
+      if (error?.status === 400 || error?.code === 400) {
         return true;
       }
       return false;
@@ -109,5 +111,79 @@ export class ClaudeService implements ILLMService {
 
   getProviderName(): TLLMProvider {
     return TLLMProvider.CLAUDE;
+  }
+
+  async generateDescriptionWithCallback(
+    request: TLLMRequest,
+    onToken?: (token: string) => void
+  ): Promise<TLLMResponse> {
+    if (!onToken) {
+      return this.generateDescription(request);
+    }
+
+    try {
+      const model = request.options?.model || this.defaultModel;
+      const maxTokens = request.options?.maxTokens || 1000;
+      const temperature = request.options?.temperature || 0.7;
+
+      // Create streaming LLM
+      const streamingLLM = new ChatAnthropic({
+        apiKey: this.apiKey,
+        model,
+        temperature,
+        maxTokens,
+        streaming: true
+      });
+
+      // Use enhanced template service with LangChain integration
+      const systemMessage = 'You are a helpful assistant that generates comprehensive pull request descriptions based on code changes and PR information.';
+      const chatTemplate = TemplateService.createChatTemplate(systemMessage, 'pr-description-template.txt');
+
+      // Create the chain: PromptTemplate -> LLM -> StringOutputParser
+      const chain = chatTemplate.pipe(streamingLLM).pipe(new StringOutputParser());
+
+      // Prepare template variables
+      const templateVariables = {
+        title: request.prData.title,
+        description: request.prData.description || '無描述提供',
+        author: request.prData.author,
+        repository: request.prData.repository,
+        sourceBranch: request.prData.sourceBranch,
+        destinationBranch: request.prData.destinationBranch,
+        diff: request.prData.diff
+      };
+
+      let fullContent = '';
+      
+      // Use streaming with callback
+      const stream = await chain.stream(templateVariables);
+      
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        onToken(chunk);
+      }
+
+      if (!fullContent) {
+        return {
+          success: false,
+          error: 'No response generated from Claude'
+        };
+      }
+
+      // Process response using existing service method
+      const processedResponse = LLMService.processLLMResponse(fullContent);
+
+      return {
+        success: true,
+        data: {
+          description: processedResponse,
+          provider: TLLMProvider.CLAUDE,
+          model
+        }
+      };
+    } catch (error: any) {
+      console.error('ClaudeService streaming error:', error);
+      return LLMService.handleError(error, TLLMProvider.CLAUDE);
+    }
   }
 }

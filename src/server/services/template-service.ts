@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { TLLMPromptData } from '../../types/llm-types';
 
 export class TemplateService {
   private static templateCache: Map<string, string> = new Map();
+  private static langchainTemplateCache: Map<string, PromptTemplate> = new Map();
 
   /**
    * 讀取模板文件內容
@@ -61,6 +63,40 @@ export class TemplateService {
   }
 
   /**
+   * Convert template with {{variable}} syntax to LangChain {variable} syntax
+   */
+  private static convertToLangChainSyntax(template: string): string {
+    // Convert {{variable}} to {variable} for LangChain compatibility
+    return template.replace(/\{\{(\w+)\}\}/g, '{$1}');
+  }
+
+  /**
+   * Create a LangChain PromptTemplate from existing template file
+   */
+  static createLangChainTemplate(templateName: string): PromptTemplate {
+    const cacheKey = templateName;
+    
+    if (this.langchainTemplateCache.has(cacheKey)) {
+      return this.langchainTemplateCache.get(cacheKey)!;
+    }
+
+    const originalTemplate = this.readTemplate(templateName);
+    const langchainTemplate = this.convertToLangChainSyntax(originalTemplate);
+    
+    // Extract variable names from the template
+    const variableMatches = originalTemplate.match(/\{\{(\w+)\}\}/g) || [];
+    const inputVariables = variableMatches.map(match => match.replace(/[{}]/g, ''));
+    
+    const promptTemplate = new PromptTemplate({
+      template: langchainTemplate,
+      inputVariables: [...new Set(inputVariables)] // Remove duplicates
+    });
+
+    this.langchainTemplateCache.set(cacheKey, promptTemplate);
+    return promptTemplate;
+  }
+
+  /**
    * 格式化 PR 數據為 LLM prompt
    */
   static formatPRDataForPrompt(prData: TLLMPromptData): string {
@@ -80,9 +116,50 @@ export class TemplateService {
   }
 
   /**
-   * 清除模板緩存 (用於開發時重新載入模板)
+   * Format PR data for LangChain using PromptTemplate
+   */
+  static async formatPRDataForLangChain(prData: TLLMPromptData): Promise<string> {
+    const promptTemplate = this.createLangChainTemplate('pr-description-template.txt');
+    
+    const variables = {
+      title: prData.title,
+      description: prData.description || '無描述提供',
+      author: prData.author,
+      repository: prData.repository,
+      sourceBranch: prData.sourceBranch,
+      destinationBranch: prData.destinationBranch,
+      diff: prData.diff
+    };
+
+    return await promptTemplate.format(variables);
+  }
+
+  /**
+   * Create a system + user message template for LangChain chat models
+   */
+  static createChatTemplate(systemMessage: string, templateName: string): PromptTemplate {
+    const userTemplate = this.readTemplate(templateName);
+    const langchainUserTemplate = this.convertToLangChainSyntax(userTemplate);
+    
+    const combinedTemplate = `System: ${systemMessage}
+
+User: ${langchainUserTemplate}`;
+
+    // Extract variable names from the user template
+    const variableMatches = userTemplate.match(/\{\{(\w+)\}\}/g) || [];
+    const inputVariables = variableMatches.map(match => match.replace(/[{}]/g, ''));
+    
+    return new PromptTemplate({
+      template: combinedTemplate,
+      inputVariables: [...new Set(inputVariables)]
+    });
+  }
+
+  /**
+   * 清除所有緩存 (包含 LangChain 模板緩存)
    */
   static clearCache(): void {
     this.templateCache.clear();
+    this.langchainTemplateCache.clear();
   }
 }

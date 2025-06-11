@@ -88,16 +88,21 @@ app.get('/api', (req, res) => {
 app.use(newNotFoundHandler);
 app.use(globalErrorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  logInfo('Server started', {
-    port: PORT,
-    environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0'
+// Start server only if this file is run directly (not imported for testing)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    logInfo('Server started', {
+      port: PORT,
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0'
+    });
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌐 Web interface available at http://localhost:${PORT}/`);
+    console.log(`📖 API documentation available at http://localhost:${PORT}/api`);
+    console.log(`🔒 Security middleware enabled`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Web interface available at http://localhost:${PORT}/`);
-  console.log(`📖 API documentation available at http://localhost:${PORT}/api`);
-  console.log(`🔒 Security middleware enabled`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+}
+
+// Export app for testing
+export default app;
