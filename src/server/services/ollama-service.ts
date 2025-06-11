@@ -12,18 +12,29 @@ dotenv.config();
 export class OllamaService implements ILLMService {
   private baseURL: string;
   private defaultModel: string;
+  private apiKey: string | undefined;
   private llm: ChatOllama;
 
   constructor() {
     this.baseURL = process.env.OLLAMA_API_URL || 'http://localhost:11434';
     this.defaultModel = process.env.OLLAMA_MODEL || 'llama2';
+    this.apiKey = process.env.OLLAMA_API_KEY;
     
     // Initialize LangChain ChatOllama instance
     this.llm = new ChatOllama({
       baseUrl: this.baseURL,
       model: this.defaultModel,
-      temperature: 0.7
+      temperature: 0.7,
+      headers: this.getAuthHeaders()
     });
+  }
+
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+    return headers;
   }
 
   async generateDescription(request: TLLMRequest): Promise<TLLMResponse> {
@@ -37,7 +48,8 @@ export class OllamaService implements ILLMService {
       const llm = new ChatOllama({
         baseUrl: this.baseURL,
         model,
-        temperature
+        temperature,
+        headers: this.getAuthHeaders()
       });
 
       // Use enhanced template service with LangChain integration
@@ -87,8 +99,10 @@ export class OllamaService implements ILLMService {
   async isAvailable(): Promise<boolean> {
     try {
       // Test API availability using direct HTTP call (keep existing logic)
+      const headers = this.getAuthHeaders();
       const response = await axios.get(`${this.baseURL}/api/tags`, {
         timeout: 5000, // 5 second timeout
+        headers
       });
       
       // Check if any models are available
@@ -121,7 +135,8 @@ export class OllamaService implements ILLMService {
       const streamingLLM = new ChatOllama({
         baseUrl: this.baseURL,
         model,
-        temperature
+        temperature,
+        headers: this.getAuthHeaders()
       });
 
       // Use enhanced template service with LangChain integration

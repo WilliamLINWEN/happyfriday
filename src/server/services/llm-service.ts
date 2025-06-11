@@ -34,7 +34,9 @@ export class LLMService {
           success: false,
           error: `${request.provider} service is not available. Please check your API credentials.`
         };
-      }
+      } 
+     
+      console.info(`${request.provider} is available. Using ${request.provider} service for description generation.`);     
 
       // Optimize prompt data before sending to LLM
       if (request.prData) {
