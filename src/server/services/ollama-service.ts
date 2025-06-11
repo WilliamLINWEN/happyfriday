@@ -67,7 +67,8 @@ export class OllamaService implements ILLMService {
         repository: request.prData.repository,
         sourceBranch: request.prData.sourceBranch,
         destinationBranch: request.prData.destinationBranch,
-        diff: request.prData.diff
+        diff: request.prData.diff,
+        additionalContext: request.prData.additionalContext || ''
       };
 
       // Execute the chain
@@ -154,7 +155,8 @@ export class OllamaService implements ILLMService {
         repository: request.prData.repository,
         sourceBranch: request.prData.sourceBranch,
         destinationBranch: request.prData.destinationBranch,
-        diff: request.prData.diff
+        diff: request.prData.diff,
+        additionalContext: request.prData.additionalContext || ''
       };
 
       let fullContent = '';

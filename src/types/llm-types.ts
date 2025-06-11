@@ -16,6 +16,7 @@ export type TLLMRequest = {
     sourceBranch: string;
     destinationBranch: string;
     repository: string;
+    additionalContext?: string;
   };
   options?: {
     model?: string;
@@ -49,4 +50,5 @@ export type TLLMPromptData = {
   sourceBranch: string;
   destinationBranch: string;
   repository: string;
+  additionalContext?: string;
 };

@@ -13,6 +13,27 @@ const VALIDATION_PATTERNS = {
   ]
 };
 
+// Initialize advanced options toggle
+function initializeAdvancedOptions() {
+  const toggleButton = document.getElementById('advanced-toggle');
+  const toggleIcon = toggleButton.querySelector('.toggle-icon');
+  const advancedContent = document.getElementById('advanced-content');
+  
+  toggleButton.addEventListener('click', function() {
+    const isVisible = advancedContent.style.display !== 'none';
+    
+    if (isVisible) {
+      // Hide advanced options
+      advancedContent.style.display = 'none';
+      toggleIcon.classList.remove('rotated');
+    } else {
+      // Show advanced options
+      advancedContent.style.display = 'block';
+      toggleIcon.classList.add('rotated');
+    }
+  });
+}
+
 // Enhanced input validation
 function validateFormInput(repository, prNumber) {
   const errors = [];
@@ -220,7 +241,7 @@ function trackEvent(event, data) {
 }
 
 // Streaming function for real-time description generation
-async function generateDescriptionStreaming(repository, prNumber, provider = null) {
+async function generateDescriptionStreaming(repository, prNumber, provider = null, additionalContext = '') {
   const form = document.getElementById('pr-form');
   const submitBtn = form.querySelector('button[type="submit"]');
   const loadingDiv = document.getElementById('loading-indicator');
@@ -265,6 +286,14 @@ async function generateDescriptionStreaming(repository, prNumber, provider = nul
 
     if (provider) {
       requestData.provider = provider;
+    }
+
+    if (additionalContext) {
+      requestData.additionalContext = additionalContext;
+    }
+    
+    if (additionalContext && additionalContext.trim()) {
+      requestData.additionalContext = additionalContext.trim();
     }
 
     loadingDiv.textContent = 'Connecting to streaming service...';
@@ -389,6 +418,9 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
+  // Initialize advanced options toggle
+  initializeAdvancedOptions();
+
   // Check available providers on page load
   checkAvailableProviders();
 
@@ -434,6 +466,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const prNumber = sanitizeInput(form['pr-number'].value.trim());
     const provider = form.provider.value;
     const streamingMode = document.getElementById('streaming-mode').checked;
+    const additionalContext = sanitizeInput(form['additional-context'].value.trim());
     
     const validationErrors = validateFormInput(repo, prNumber);
     if (validationErrors.length > 0) {
@@ -443,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Use streaming if enabled
     if (streamingMode) {
-      await generateDescriptionStreaming(repo, prNumber, provider);
+      await generateDescriptionStreaming(repo, prNumber, provider, additionalContext);
       return;
     }
     setLoadingState(true, submitButton, originalButtonText);
@@ -454,7 +487,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastError = null;
     while (retries <= maxRetries) {
       try {
-        const requestPayload = { repository: repo, prNumber: prNumber, provider: provider };
+        const requestPayload = { 
+          repository: repo, 
+          prNumber: prNumber, 
+          provider: provider,
+          additionalContext: additionalContext || undefined
+        };
         loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST.TIMEOUT);

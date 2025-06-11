@@ -109,7 +109,8 @@ export class TemplateService {
       repository: prData.repository,
       sourceBranch: prData.sourceBranch,
       destinationBranch: prData.destinationBranch,
-      diff: prData.diff
+      diff: prData.diff,
+      additionalContext: prData.additionalContext || ''
     };
 
     return this.replaceVariables(template, variables);
@@ -128,7 +129,8 @@ export class TemplateService {
       repository: prData.repository,
       sourceBranch: prData.sourceBranch,
       destinationBranch: prData.destinationBranch,
-      diff: prData.diff
+      diff: prData.diff,
+      additionalContext: prData.additionalContext || ''
     };
 
     return await promptTemplate.format(variables);

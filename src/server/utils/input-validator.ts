@@ -318,6 +318,19 @@ export class InputValidator {
       }
     }
 
+    // Validate additional context (optional)
+    if (body.additionalContext !== undefined) {
+      const contextValidation = InputValidator.validateString(body.additionalContext, {
+        maxLength: 1000,
+        sanitize: true,
+        trim: true
+      });
+      if (!contextValidation.isValid) {
+        result.isValid = false;
+        result.errors.push('Additional context must be less than 1000 characters');
+      }
+    }
+
     return result;
   }
 }

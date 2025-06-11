@@ -12,6 +12,7 @@ interface TGenerateDescriptionRequest {
   repository: string;
   prNumber: string;
   provider?: TLLMProvider;
+  additionalContext?: string;
   options?: {
     model?: string;
     maxTokens?: number;
@@ -30,7 +31,7 @@ export async function generateDescription(req: Request, res: Response, next: Nex
       return;
     }
 
-    const { repository, prNumber, provider, options }: TGenerateDescriptionRequest = req.body;
+    const { repository, prNumber, provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
     console.log(`Starting PR description generation for ${repository}#${prNumber}`);
 
@@ -75,7 +76,8 @@ export async function generateDescription(req: Request, res: Response, next: Nex
         author: pr.author.display_name,
         sourceBranch: pr.source.branch.name,
         destinationBranch: pr.destination.branch.name,
-        repository: pr.source.repository.full_name
+        repository: pr.source.repository.full_name,
+        additionalContext: additionalContext || ''
       },
       options
     };
@@ -130,7 +132,7 @@ export async function generateDescriptionStream(req: Request, res: Response, nex
       return;
     }
 
-    const { repository, prNumber, provider, options }: TGenerateDescriptionRequest = req.body;
+    const { repository, prNumber, provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
     console.log(`Starting streaming PR description generation for ${repository}#${prNumber}`);
 
@@ -206,7 +208,8 @@ export async function generateDescriptionStream(req: Request, res: Response, nex
         author: pr.author.display_name,
         sourceBranch: pr.source.branch.name,
         destinationBranch: pr.destination.branch.name,
-        repository: pr.source.repository.full_name
+        repository: pr.source.repository.full_name,
+        additionalContext: additionalContext || ''
       },
       options
     };

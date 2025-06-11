@@ -28,6 +28,24 @@
         <label for="streaming-mode">Enable real-time streaming (recommended)</label>
       </div>
       
+      <!-- Advanced Options Toggle -->
+      <div class="advanced-options-section">
+        <button type="button" class="advanced-toggle" id="advanced-toggle">
+          <span class="toggle-icon">▶</span>
+          Advanced Options
+        </button>
+        
+        <div class="advanced-content" id="advanced-content" style="display: none;">
+          <label for="additional-context">Additional Context (optional)</label>
+          <textarea 
+            id="additional-context" 
+            name="additional-context" 
+            placeholder="e.g. This fixes issue #123 related to X feature and aligns with backend API changes in PR #456."
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+      
       <button type="submit">Generate Description</button>
       <div id="loading-indicator" style="display:none;">Generating PR description...</div>
       <div id="error-message" class="form-error"></div>

@@ -18,5 +18,6 @@ export function optimizePrompt(prData: TLLMPromptData): TLLMPromptData {
     repository: (prData.repository || '').trim(),
     sourceBranch: (prData.sourceBranch || '').trim(),
     destinationBranch: (prData.destinationBranch || '').trim(),
+    additionalContext: (prData.additionalContext || '').trim(),
   };
 }
