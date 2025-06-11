@@ -23,6 +23,11 @@
         <option value="ollama">Ollama (Local)</option>
       </select>
       
+      <div class="streaming-toggle">
+        <input type="checkbox" id="streaming-mode" name="streaming-mode" checked />
+        <label for="streaming-mode">Enable real-time streaming (recommended)</label>
+      </div>
+      
       <button type="submit">Generate Description</button>
       <div id="loading-indicator" style="display:none;">Generating PR description...</div>
       <div id="error-message" class="form-error"></div>

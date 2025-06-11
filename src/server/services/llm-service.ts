@@ -52,6 +52,57 @@ export class LLMService {
     }
   }
 
+  async generateDescriptionStream(
+    request: TLLMRequest, 
+    onToken: (token: string) => void
+  ): Promise<TLLMResponse> {
+    try {
+      const service = this.services.get(request.provider);
+      if (!service) {
+        return {
+          success: false,
+          error: `Unsupported LLM provider: ${request.provider}`
+        };
+      }
+
+      const isAvailable = await service.isAvailable();
+      if (!isAvailable) {
+        return {
+          success: false,
+          error: `${request.provider} service is not available. Please check your API credentials.`
+        };
+      }
+
+      console.info(`${request.provider} is available. Using ${request.provider} service for streaming description generation.`);
+
+      // Optimize prompt data before sending to LLM
+      if (request.prData) {
+        request.prData = optimizePrompt(request.prData);
+      }
+
+      // Check if service supports streaming
+      if (service.generateDescriptionWithCallback) {
+        return await service.generateDescriptionWithCallback(request, onToken);
+      } else {
+        // Fallback to non-streaming if not supported
+        console.warn(`${request.provider} service does not support streaming. Falling back to non-streaming mode.`);
+        const response = await service.generateDescription(request);
+        
+        // Simulate streaming by sending the complete response at once
+        if (response.success && response.data) {
+          onToken(response.data.description);
+        }
+        
+        return response;
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Failed to generate streaming description: ${error.message}`
+      };
+    }
+  }
+
   async getAvailableProviders(): Promise<TLLMProvider[]> {
     const availableProviders: TLLMProvider[] = [];
     

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Button Test</title>
+    <link rel="stylesheet" href="css/form-styles.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Submit Button Test</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Form Validation</h2>
+            <p>Try submitting without filling fields to test validation:</p>
+            <form id="test-form-1">
+                <label for="test-repo">Repository</label>
+                <input type="text" id="test-repo" name="repo" placeholder="e.g. myteam/myrepo" />
+                
+                <label for="test-pr">PR Number</label>
+                <input type="number" id="test-pr" name="pr-number" placeholder="e.g. 42" />
+                
+                <div class="streaming-toggle">
+                    <input type="checkbox" id="test-streaming" checked />
+                    <label for="test-streaming">Enable streaming</label>
+                </div>
+                
+                <button type="submit">Test Submit</button>
+            </form>
+            <div id="test-result-1" class="test-result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Valid Form Submission</h2>
+            <p>Test with mock data (will fail at API call, but button should work):</p>
+            <form id="test-form-2">
+                <label for="test-repo-2">Repository</label>
+                <input type="text" id="test-repo-2" name="repo" value="test/repo" />
+                
+                <label for="test-pr-2">PR Number</label>
+                <input type="number" id="test-pr-2" name="pr-number" value="123" />
+                
+                <div class="streaming-toggle">
+                    <input type="checkbox" id="test-streaming-2" checked />
+                    <label for="test-streaming-2">Enable streaming</label>
+                </div>
+                
+                <button type="submit">Test Submit with Data</button>
+            </form>
+            <div id="test-result-2" class="test-result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Function Availability Check</h2>
+            <button onclick="testFunctions()">Check Function Availability</button>
+            <div id="function-test-result" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/formHandler.js"></script>
+    <script>
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+            element.style.display = 'block';
+        }
+
+        function testFunctions() {
+            const results = [];
+            
+            // Test if functions are available
+            if (typeof generateDescriptionStreaming === 'function') {
+                results.push('✓ generateDescriptionStreaming function is available');
+            } else {
+                results.push('✗ generateDescriptionStreaming function is NOT available');
+            }
+            
+            if (typeof setLoadingState === 'function') {
+                results.push('✓ setLoadingState function is available');
+            } else {
+                results.push('✗ setLoadingState function is NOT available');
+            }
+            
+            if (typeof displayError === 'function') {
+                results.push('✓ displayError function is available');
+            } else {
+                results.push('✗ displayError function is NOT available');
+            }
+            
+            if (typeof sanitizeInput === 'function') {
+                results.push('✓ sanitizeInput function is available');
+            } else {
+                results.push('✗ sanitizeInput function is NOT available');
+            }
+            
+            if (typeof validateFormInput === 'function') {
+                results.push('✓ validateFormInput function is available');
+            } else {
+                results.push('✗ validateFormInput function is NOT available');
+            }
+            
+            const allAvailable = !results.some(r => r.includes('NOT available'));
+            const resultType = allAvailable ? 'success' : 'error';
+            
+            showResult('function-test-result', results.join('\\n'), resultType);
+        }
+
+        // Test form submissions
+        document.getElementById('test-form-1').addEventListener('submit', function(e) {
+            e.preventDefault();
+            showResult('test-result-1', 'Form 1 submitted! Check console for validation messages.', 'info');
+            
+            // Simulate the actual form handler behavior
+            const repo = this.repo.value.trim();
+            const prNumber = this['pr-number'].value.trim();
+            
+            try {
+                const validationErrors = validateFormInput(repo, prNumber);
+                if (validationErrors.length > 0) {
+                    showResult('test-result-1', `Validation failed: ${validationErrors.join(', ')}`, 'error');
+                } else {
+                    showResult('test-result-1', 'Validation passed! Form would proceed to submission.', 'success');
+                }
+            } catch (error) {
+                showResult('test-result-1', `Error during validation: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('test-form-2').addEventListener('submit', function(e) {
+            e.preventDefault();
+            showResult('test-result-2', 'Form 2 submitted! Check console for processing.', 'info');
+            
+            const repo = this.repo.value.trim();
+            const prNumber = this['pr-number'].value.trim();
+            const streamingEnabled = document.getElementById('test-streaming-2').checked;
+            
+            try {
+                const validationErrors = validateFormInput(repo, prNumber);
+                if (validationErrors.length > 0) {
+                    showResult('test-result-2', `Validation failed: ${validationErrors.join(', ')}`, 'error');
+                } else {
+                    const mode = streamingEnabled ? 'streaming' : 'regular';
+                    showResult('test-result-2', `Validation passed! Would use ${mode} mode for: ${repo}#${prNumber}`, 'success');
+                    
+                    // Test if we can call the streaming function
+                    if (streamingEnabled && typeof generateDescriptionStreaming === 'function') {
+                        console.log('Would call generateDescriptionStreaming with:', repo, prNumber);
+                        showResult('test-result-2', `${mode} mode ready. Function available for: ${repo}#${prNumber}`, 'success');
+                    }
+                }
+            } catch (error) {
+                showResult('test-result-2', `Error during validation: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

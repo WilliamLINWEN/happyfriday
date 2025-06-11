@@ -2,8 +2,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { generateDescription } from './api/generate-description';
+import { generateDescription, generateDescriptionStream } from './api/generate-description';
 import { healthCheck, getAvailableProviders } from './api/health';
+import { testStream } from './api/test-stream';
 import { errorHandler, notFoundHandler } from './middleware/error-middleware';
 import { createGeneralRateLimit, createAPIRateLimit } from './middleware/rate-limiter';
 import { 
@@ -67,8 +68,14 @@ app.use(express.static('src/client'));
 app.get('/health', asyncErrorHandler(healthCheck));
 app.get('/api/providers', asyncErrorHandler(getAvailableProviders));
 
+// Test streaming endpoint
+app.get('/api/test-stream', asyncErrorHandler(testStream));
+
 // Apply stricter rate limiting to the main API endpoint
 app.post('/api/generate-description', createAPIRateLimit(), asyncErrorHandler(generateDescription));
+
+// Streaming endpoint for real-time description generation
+app.post('/api/generate-description/stream', createAPIRateLimit(), asyncErrorHandler(generateDescriptionStream));
 
 // API info endpoint (moved from root to avoid conflict with static files)
 app.get('/api', (req, res) => {
@@ -79,7 +86,8 @@ app.get('/api', (req, res) => {
     endpoints: {
       health: '/health',
       providers: '/api/providers',
-      generateDescription: 'POST /api/generate-description'
+      generateDescription: 'POST /api/generate-description',
+      generateDescriptionStream: 'POST /api/generate-description/stream'
     }
   });
 });

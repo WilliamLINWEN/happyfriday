@@ -95,6 +95,32 @@ function createErrorContainer() {
   return container;
 }
 
+// Function to handle loading state for submit button
+function setLoadingState(isLoading, button, originalText) {
+  console.log('setLoadingState:', { isLoading, button: !!button, originalText });
+  
+  if (!button) {
+    console.error('Button not provided to setLoadingState');
+    return;
+  }
+  
+  if (isLoading) {
+    button.disabled = true;
+    button.textContent = 'Generating...';
+    button.style.opacity = '0.7';
+    button.style.cursor = 'not-allowed';
+    button.style.background = '#94a3b8';
+    console.log('Button set to loading state');
+  } else {
+    button.disabled = false;
+    button.textContent = originalText || 'Generate Description';
+    button.style.opacity = '1';
+    button.style.cursor = 'pointer';
+    button.style.background = '#0052cc';
+    console.log('Button restored to normal state');
+  }
+}
+
 // Function to display PR description with metadata
 function displayPRDescription(data) {
   const descContainer = document.getElementById('pr-description-container');
@@ -193,6 +219,164 @@ function trackEvent(event, data) {
   // Example: window.gtag && window.gtag('event', event, data);
 }
 
+// Streaming function for real-time description generation
+async function generateDescriptionStreaming(repository, prNumber, provider = null) {
+  const form = document.getElementById('pr-form');
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const loadingDiv = document.getElementById('loading-indicator');
+  const errorDiv = document.getElementById('error-message');
+  const resultDiv = document.getElementById('pr-description-container');
+
+  // Clear previous results
+  errorDiv.textContent = '';
+  resultDiv.innerHTML = '';
+  
+  // Show loading state
+  setLoadingState(true, submitBtn, 'Generate Description');
+  loadingDiv.style.display = 'block';
+  loadingDiv.textContent = 'Starting streaming generation...';
+
+  try {
+    // Create a container for streaming content
+    const streamingContainer = document.createElement('div');
+    streamingContainer.className = 'streaming-container';
+    streamingContainer.innerHTML = `
+      <h3>Generating Description...</h3>
+      <div class="streaming-content">
+        <div class="original-pr-info"></div>
+        <div class="streaming-text-container">
+          <h4>Generated Description:</h4>
+          <div class="streaming-text"></div>
+        </div>
+      </div>
+    `;
+    
+    resultDiv.appendChild(streamingContainer);
+    resultDiv.style.display = 'block';
+
+    const streamingText = streamingContainer.querySelector('.streaming-text');
+    const originalPRInfo = streamingContainer.querySelector('.original-pr-info');
+
+    // Prepare request data
+    const requestData = {
+      repository: sanitizeInput(repository),
+      prNumber: sanitizeInput(prNumber)
+    };
+
+    if (provider) {
+      requestData.provider = provider;
+    }
+
+    loadingDiv.textContent = 'Connecting to streaming service...';
+
+    // Use fetch with streaming
+    const response = await fetch('/api/generate-description/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    loadingDiv.textContent = 'Receiving data...';
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Process complete SSE messages
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+      
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          const event = line.slice(7);
+          continue;
+        }
+        
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            // Handle different event types
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            
+            if (data.originalPR) {
+              // Display original PR information
+              originalPRInfo.innerHTML = `
+                <div class="original-pr" data-original-pr='${JSON.stringify(data.originalPR)}'>
+                  <h4>Original PR Information:</h4>
+                  <p><strong>Title:</strong> ${escapeHtml(data.originalPR.title)}</p>
+                  <p><strong>Author:</strong> ${escapeHtml(data.originalPR.author)}</p>
+                  <p><strong>Branch:</strong> ${escapeHtml(data.originalPR.sourceBranch)} → ${escapeHtml(data.originalPR.destinationBranch)}</p>
+                  <p><strong>Repository:</strong> ${escapeHtml(data.originalPR.repository)}</p>
+                </div>
+              `;
+              loadingDiv.textContent = 'Generating description...';
+            }
+            
+            if (data.token) {
+              // Append new token to streaming text
+              streamingText.textContent = data.content || '';
+              // Auto-scroll to bottom
+              streamingText.scrollTop = streamingText.scrollHeight;
+            }
+            
+            if (data.generatedDescription && data.metadata) {
+              // Generation complete - display final result
+              loadingDiv.style.display = 'none';
+              
+              // Get original PR data
+              const originalPRElement = originalPRInfo.querySelector('.original-pr');
+              const originalPRData = originalPRElement ? 
+                JSON.parse(originalPRElement.dataset.originalPr || '{}') : {};
+              
+              // Replace streaming container with final result
+              streamingContainer.remove();
+              
+              displayPRDescription({
+                generatedDescription: data.generatedDescription,
+                originalPR: originalPRData,
+                metadata: data.metadata
+              });
+            }
+            
+          } catch (parseError) {
+            console.warn('Failed to parse SSE data:', parseError);
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('Streaming error:', error);
+    
+    // Hide loading and show error
+    loadingDiv.style.display = 'none';
+    
+    displayError(error.message || 'An error occurred during streaming generation');
+    
+  } finally {
+    // Reset button state
+    setLoadingState(false, submitBtn, 'Generate Description');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('pr-form');
   const loading = document.getElementById('loading-indicator');
@@ -240,32 +424,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Function to handle loading state for submit button
-  function setLoadingState(isLoading, button, originalText) {
-    console.log('setLoadingState:', { isLoading, button: !!button, originalText });
-    
-    if (!button) {
-      console.error('Button not provided to setLoadingState');
-      return;
-    }
-    
-    if (isLoading) {
-      button.disabled = true;
-      button.textContent = 'Generating...';
-      button.style.opacity = '0.7';
-      button.style.cursor = 'not-allowed';
-      button.style.background = '#94a3b8';
-      console.log('Button set to loading state');
-    } else {
-      button.disabled = false;
-      button.textContent = originalText || 'Generate Description';
-      button.style.opacity = '1';
-      button.style.cursor = 'pointer';
-      button.style.background = '#0052cc';
-      console.log('Button restored to normal state');
-    }
-  }
-
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     errorMsg.textContent = '';
@@ -275,9 +433,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const repo = sanitizeInput(form.repo.value.trim());
     const prNumber = sanitizeInput(form['pr-number'].value.trim());
     const provider = form.provider.value;
+    const streamingMode = document.getElementById('streaming-mode').checked;
+    
     const validationErrors = validateFormInput(repo, prNumber);
     if (validationErrors.length > 0) {
       displayError(validationErrors.join('. '));
+      return;
+    }
+
+    // Use streaming if enabled
+    if (streamingMode) {
+      await generateDescriptionStreaming(repo, prNumber, provider);
       return;
     }
     setLoadingState(true, submitButton, originalButtonText);

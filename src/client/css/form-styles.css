@@ -154,6 +154,123 @@
 .copy-button:hover {
   background: #218838;
 }
+
+/* Streaming interface styles */
+.streaming-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.streaming-container h3 {
+  margin: 0 0 15px 0;
+  color: #0052cc;
+  font-size: 1.2rem;
+}
+
+.streaming-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.original-pr-info {
+  padding: 15px;
+  background: #fff;
+  border-radius: 6px;
+  border-left: 4px solid #0052cc;
+}
+
+.original-pr h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.original-pr p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.streaming-text-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.streaming-text-container h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.streaming-text {
+  min-height: 100px;
+  max-height: 400px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  resize: vertical;
+}
+
+.streaming-text:empty::before {
+  content: "Waiting for response...";
+  color: #999;
+  font-style: italic;
+}
+
+/* Animation for streaming text */
+.streaming-text::after {
+  content: "▊";
+  animation: blink 1s infinite;
+  color: #0052cc;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Streaming mode toggle */
+.streaming-toggle {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.streaming-toggle input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.streaming-toggle label {
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Responsive design for streaming */
+@media (max-width: 768px) {
+  .streaming-content {
+    gap: 15px;
+  }
+  
+  .streaming-text {
+    max-height: 300px;
+    font-size: 0.8rem;
+  }
+}
+
 @media (max-width: 600px) {
   .form-container {
     max-width: 98vw;
