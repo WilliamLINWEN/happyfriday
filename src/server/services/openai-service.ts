@@ -70,6 +70,7 @@ export class OpenAIService implements ILLMService {
         }
       };
     } catch (error: any) {
+      console.error('OpenAIService error:', error);
       return LLMService.handleError(error, TLLMProvider.OPENAI);
     }
   }

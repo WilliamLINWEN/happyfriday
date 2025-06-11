@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import { TLLMProvider, TLLMRequest, TLLMResponse, ILLMService, TLLMPromptData } from '../../types/llm-types';
 import { TemplateService } from './template-service';
+import { optimizePrompt } from './llm-prompt-optimizer';
 
 dotenv.config();
 
@@ -33,6 +34,11 @@ export class LLMService {
           success: false,
           error: `${request.provider} service is not available. Please check your API credentials.`
         };
+      }
+
+      // Optimize prompt data before sending to LLM
+      if (request.prData) {
+        request.prData = optimizePrompt(request.prData);
       }
 
       return await service.generateDescription(request);

@@ -187,6 +187,12 @@ async function copyToClipboard(text, button) {
   }
 }
 
+// Analytics event hook (stub)
+function trackEvent(event, data) {
+  // Integrate with analytics/monitoring here if needed
+  // Example: window.gtag && window.gtag('event', event, data);
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('pr-form');
   const loading = document.getElementById('loading-indicator');
@@ -262,115 +268,100 @@ document.addEventListener('DOMContentLoaded', function () {
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    console.log('Form submitted');
-    
-    // Clear previous messages
     errorMsg.textContent = '';
     descContainer.innerHTML = '';
-    
-    // Get submit button and store original text FIRST
     const submitButton = form.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton ? submitButton.textContent : 'Generate Description';
-    
-    console.log('Submit button found:', !!submitButton, 'Original text:', originalButtonText);
-    
-    // Get and sanitize input values
+    const originalButtonText = submitButton.textContent;
     const repo = sanitizeInput(form.repo.value.trim());
     const prNumber = sanitizeInput(form['pr-number'].value.trim());
     const provider = form.provider.value;
-    
-    // Enhanced client-side validation
     const validationErrors = validateFormInput(repo, prNumber);
     if (validationErrors.length > 0) {
-      console.log('Validation errors:', validationErrors);
       displayError(validationErrors.join('. '));
-      return; // Exit early on validation error
+      return;
     }
-    
-    // Only start loading state after validation passes
-    console.log('Starting loading state...');
     setLoadingState(true, submitButton, originalButtonText);
     loading.style.display = 'block';
     loading.textContent = 'Fetching PR data from Bitbucket...';
-
-    try {
-      // Prepare request payload with sanitized data
-      const requestPayload = {
-        repository: repo,
-        prNumber: prNumber,
-        provider: provider
-      };
-
-      // Make API call to backend with enhanced error handling
-      loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
-      
-      const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GENERATE_DESCRIPTION}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestPayload),
-        signal: AbortSignal.timeout(CONFIG.REQUEST.TIMEOUT)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ 
-          success: false, 
-          error: { message: 'Unknown error' } 
-        }));
-        
-        // Handle specific HTTP status codes with better error messages
-        switch (response.status) {
-          case 400:
-            const message = errorData.error?.message || errorData.error || 'Invalid request. Please check your input.';
-            throw new Error(message);
-          case 401:
-            throw new Error('Authentication failed. Please check API credentials.');
-          case 403:
-            throw new Error('Access denied. Please check your permissions.');
-          case 404:
-            throw new Error('PR not found. Please check the repository and PR number.');
-          case 429:
-            const retryAfter = response.headers.get('Retry-After');
-            const retryMessage = retryAfter ? ` Please try again in ${retryAfter} seconds.` : ' Please try again later.';
-            throw new Error('Rate limit exceeded.' + retryMessage);
-          case 500:
-            throw new Error('Server error. Please try again later.');
-          case 502:
-            throw new Error('Bad gateway. The server is temporarily unavailable.');
-          case 503:
-            throw new Error('Service temporarily unavailable. Please try again later.');
-          default:
-            throw new Error(errorData.error?.message || errorData.error || `Server error (${response.status}). Please try again.`);
+    let retries = 0;
+    const maxRetries = CONFIG.REQUEST.MAX_RETRIES;
+    let lastError = null;
+    while (retries <= maxRetries) {
+      try {
+        const requestPayload = { repository: repo, prNumber: prNumber, provider: provider };
+        loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST.TIMEOUT);
+        const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.GENERATE_DESCRIPTION}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ success: false, error: { message: 'Unknown error' } }));
+          switch (response.status) {
+            case 400:
+              throw new Error(errorData.error?.message || errorData.error || 'Invalid request. Please check your input.');
+            case 401:
+              throw new Error('Authentication failed. Please check API credentials.');
+            case 403:
+              throw new Error('Access denied. Please check your permissions.');
+            case 404:
+              throw new Error('PR not found. Please check the repository and PR number.');
+            case 429:
+              const retryAfter = response.headers.get('Retry-After');
+              const retryMessage = retryAfter ? ` Please try again in ${retryAfter} seconds.` : ' Please try again later.';
+              throw new Error('Rate limit exceeded.' + retryMessage);
+            case 413:
+              throw new Error('PR diff is too large to process.');
+            case 500:
+              throw new Error('Server error. Please try again later.');
+            case 502:
+              throw new Error('Bad gateway. The server is temporarily unavailable.');
+            case 503:
+              throw new Error('Service temporarily unavailable. Please try again later.');
+            default:
+              throw new Error(errorData.error?.message || errorData.error || `Server error (${response.status}). Please try again.`);
+          }
         }
+        const data = await response.json();
+        if (data.success && data.data) {
+          displayPRDescription(data.data);
+          trackEvent('pr_description_generated', { provider, repo, prNumber });
+        } else {
+          throw new Error(data.error || 'Failed to generate PR description');
+        }
+        break; // Success, exit retry loop
+      } catch (err) {
+        lastError = err;
+        if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+          errorMsg.textContent = 'Request timed out. Please try again.';
+          trackEvent('timeout', { provider, repo, prNumber });
+        } else if (err.message && err.message.includes('Rate limit')) {
+          errorMsg.textContent = err.message;
+          trackEvent('rate_limit', { provider, repo, prNumber });
+          break; // Do not retry on rate limit
+        } else if (err.message && err.message.includes('diff is too large')) {
+          errorMsg.textContent = err.message;
+          trackEvent('large_diff', { provider, repo, prNumber });
+          break; // Do not retry on large diff
+        } else if (retries < maxRetries) {
+          retries++;
+          errorMsg.textContent = `Network error. Retrying (${retries}/${maxRetries})...`;
+          trackEvent('retry', { provider, repo, prNumber, attempt: retries });
+          await new Promise(res => setTimeout(res, 500));
+          continue;
+        } else {
+          errorMsg.textContent = err.message || 'Failed to generate PR description. Please try again.';
+          trackEvent('error', { provider, repo, prNumber, error: err.message });
+        }
+        break;
       }
-
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        // Display the generated description
-        displayPRDescription(data.data);
-        console.log('Successfully displayed PR description');
-      } else {
-        throw new Error(data.error || 'Failed to generate PR description');
-      }
-
-    } catch (err) {
-      console.error('Error generating PR description:', err);
-      
-      if (err.name === 'TimeoutError') {
-        errorMsg.textContent = 'Request timed out. Please try again.';
-      } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        errorMsg.textContent = 'Network error. Please check your connection and try again.';
-      } else {
-        errorMsg.textContent = err.message || 'Failed to generate PR description. Please try again.';
-      }
-    } finally {
-      // Always reset loading state in finally block
-      console.log('Resetting loading state...');
-      setLoadingState(false, submitButton, originalButtonText);
-      loading.style.display = 'none';
     }
+    setLoadingState(false, submitButton, originalButtonText);
+    loading.style.display = 'none';
   });
 
   console.log('Form handler setup complete');
