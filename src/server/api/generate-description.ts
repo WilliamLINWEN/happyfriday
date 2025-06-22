@@ -7,10 +7,15 @@ import { formatSuccessResponse, formatErrorResponse, formatValidationErrorRespon
 import { AppError, createValidationError, createServiceUnavailableError } from '../utils/error-handler';
 import { validateGenerateDescriptionRequest } from '../utils/input-validator';
 import { logInfo, logWarn } from '../utils/logger';
+import { BitbucketUrlParser } from '../utils/url-parser';
 
 interface TGenerateDescriptionRequest {
-  repository: string;
-  prNumber: string;
+  // New URL-based format
+  prUrl?: string;
+  // Legacy format (for backward compatibility)
+  repository?: string;
+  prNumber?: string;
+  // Common fields
   provider?: TLLMProvider;
   additionalContext?: string;
   options?: {
@@ -20,18 +25,50 @@ interface TGenerateDescriptionRequest {
   };
 }
 
+/**
+ * Parse request to extract repository and PR number from either URL or legacy format
+ */
+function parseRequestInput(body: TGenerateDescriptionRequest): { repository: string; prNumber: string; error?: string } {
+  const { prUrl, repository, prNumber } = body;
+
+  // If PR URL is provided, parse it
+  if (prUrl) {
+    const parsed = BitbucketUrlParser.parsePRUrl(prUrl);
+    if (!parsed.isValid) {
+      return { repository: '', prNumber: '', error: parsed.error };
+    }
+    return {
+      repository: BitbucketUrlParser.formatRepositoryString(parsed.workspace, parsed.repository),
+      prNumber: parsed.prNumber
+    };
+  }
+
+  // Fall back to legacy format
+  if (repository && prNumber) {
+    return { repository, prNumber };
+  }
+
+  // Neither format provided
+  return {
+    repository: '',
+    prNumber: '',
+    error: 'Please provide either a PR URL (prUrl) or repository and PR number (repository, prNumber)'
+  };
+}
+
 export async function generateDescription(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const startTime = Date.now();
 
-    // Validate request body
-    const validationResult = validateGenerateDescriptionRequest(req.body);
-    if (!validationResult.isValid) {
-      res.status(400).json(formatValidationErrorResponse(validationResult.errors));
+    // Parse request input (URL or legacy format)
+    const inputResult = parseRequestInput(req.body);
+    if (inputResult.error) {
+      res.status(400).json(formatErrorResponse(inputResult.error));
       return;
     }
 
-    const { repository, prNumber, provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
+    const { repository, prNumber } = inputResult;
+    const { provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
     console.log(`Starting PR description generation for ${repository}#${prNumber}`);
 
@@ -125,14 +162,15 @@ export async function generateDescriptionStream(req: Request, res: Response, nex
   try {
     const startTime = Date.now();
 
-    // Validate request body
-    const validationResult = validateGenerateDescriptionRequest(req.body);
-    if (!validationResult.isValid) {
-      res.status(400).json(formatValidationErrorResponse(validationResult.errors));
+    // Parse request input (URL or legacy format)
+    const inputResult = parseRequestInput(req.body);
+    if (inputResult.error) {
+      res.status(400).json(formatErrorResponse(inputResult.error));
       return;
     }
 
-    const { repository, prNumber, provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
+    const { repository, prNumber } = inputResult;
+    const { provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
     console.log(`Starting streaming PR description generation for ${repository}#${prNumber}`);
 

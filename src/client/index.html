@@ -10,11 +10,23 @@
   <div class="form-container">
     <h1>Bitbucket PR Description Generator</h1>
     <form id="pr-form">
-      <label for="repo">Repository (workspace/repo_slug)</label>
-      <input type="text" id="repo" name="repo" placeholder="e.g. myteam/myrepo" required />
+      <label for="pr-url">Bitbucket PR URL</label>
+      <input type="url" id="pr-url" name="pr-url" placeholder="e.g. https://bitbucket.org/workspace/repo/pull-requests/123" required />
       
-      <label for="pr-number">PR Number</label>
-      <input type="number" id="pr-number" name="pr-number" placeholder="e.g. 42" required />
+      <!-- Legacy format toggle for backward compatibility -->
+      <div class="legacy-toggle">
+        <button type="button" class="legacy-toggle-btn" id="legacy-toggle">
+          Use separate repository and PR number instead
+        </button>
+      </div>
+      
+      <div class="legacy-inputs" id="legacy-inputs" style="display: none;">
+        <label for="repo">Repository (workspace/repo_slug)</label>
+        <input type="text" id="repo" name="repo" placeholder="e.g. myteam/myrepo" />
+        
+        <label for="pr-number">PR Number</label>
+        <input type="number" id="pr-number" name="pr-number" placeholder="e.g. 42" />
+      </div>
       
       <label for="provider">LLM Provider</label>
       <select id="provider" name="provider">

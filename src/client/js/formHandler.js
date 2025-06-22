@@ -4,6 +4,7 @@
 const VALIDATION_PATTERNS = {
   repository: /^[a-zA-Z0-9_\-\.\/]{1,100}$/,
   prNumber: /^[1-9]\d{0,5}$/, // 1 to 999999
+  prUrl: /^https?:\/\/bitbucket\.org\/[^\/]+\/[^\/]+\/pull-requests?\/\d+/i,
   suspiciousPatterns: [
     /<script[^>]*>.*?<\/script>/gi,
     /javascript:/gi,
@@ -34,30 +35,85 @@ function initializeAdvancedOptions() {
   });
 }
 
-// Enhanced input validation
-function validateFormInput(repository, prNumber) {
+// Initialize legacy format toggle
+function initializeLegacyToggle() {
+  const toggleButton = document.getElementById('legacy-toggle');
+  const legacyInputs = document.getElementById('legacy-inputs');
+  const prUrlInput = document.getElementById('pr-url');
+  const repoInput = document.getElementById('repo');
+  const prNumberInput = document.getElementById('pr-number');
+  
+  let isLegacyMode = false;
+  
+  toggleButton.addEventListener('click', function() {
+    isLegacyMode = !isLegacyMode;
+    
+    if (isLegacyMode) {
+      // Switch to legacy mode
+      legacyInputs.style.display = 'block';
+      prUrlInput.style.display = 'none';
+      prUrlInput.required = false;
+      repoInput.required = true;
+      prNumberInput.required = true;
+      toggleButton.textContent = 'Use PR URL instead';
+      
+      // Clear PR URL input
+      prUrlInput.value = '';
+    } else {
+      // Switch to URL mode
+      legacyInputs.style.display = 'none';
+      prUrlInput.style.display = 'block';
+      prUrlInput.required = true;
+      repoInput.required = false;
+      prNumberInput.required = false;
+      toggleButton.textContent = 'Use separate repository and PR number instead';
+      
+      // Clear legacy inputs
+      repoInput.value = '';
+      prNumberInput.value = '';
+    }
+  });
+}
+
+// Enhanced input validation for both URL and legacy formats
+function validateFormInput(prUrl, repository, prNumber) {
   const errors = [];
   
-  // Repository validation
-  if (!repository) {
-    errors.push('Repository is required');
-  } else if (!VALIDATION_PATTERNS.repository.test(repository)) {
-    errors.push('Repository format is invalid. Use format: username/repository');
-  } else {
-    // Check for suspicious patterns
-    for (const pattern of VALIDATION_PATTERNS.suspiciousPatterns) {
-      if (pattern.test(repository)) {
-        errors.push('Repository contains invalid characters');
-        break;
+  // Check if using URL format
+  if (prUrl) {
+    if (!VALIDATION_PATTERNS.prUrl.test(prUrl)) {
+      errors.push('Invalid Bitbucket PR URL format. Expected: https://bitbucket.org/workspace/repo/pull-requests/123');
+    } else {
+      // Check for suspicious patterns in URL
+      for (const pattern of VALIDATION_PATTERNS.suspiciousPatterns) {
+        if (pattern.test(prUrl)) {
+          errors.push('PR URL contains invalid characters');
+          break;
+        }
       }
     }
-  }
-  
-  // PR Number validation
-  if (!prNumber) {
-    errors.push('PR number is required');
-  } else if (!VALIDATION_PATTERNS.prNumber.test(prNumber)) {
-    errors.push('PR number must be between 1 and 999999');
+  } else {
+    // Legacy format validation
+    if (!repository) {
+      errors.push('Repository is required');
+    } else if (!VALIDATION_PATTERNS.repository.test(repository)) {
+      errors.push('Repository format is invalid. Use format: username/repository');
+    } else {
+      // Check for suspicious patterns
+      for (const pattern of VALIDATION_PATTERNS.suspiciousPatterns) {
+        if (pattern.test(repository)) {
+          errors.push('Repository contains invalid characters');
+          break;
+        }
+      }
+    }
+    
+    // PR Number validation
+    if (!prNumber) {
+      errors.push('PR number is required');
+    } else if (!VALIDATION_PATTERNS.prNumber.test(prNumber)) {
+      errors.push('PR number must be between 1 and 999999');
+    }
   }
   
   return errors;
@@ -241,7 +297,7 @@ function trackEvent(event, data) {
 }
 
 // Streaming function for real-time description generation
-async function generateDescriptionStreaming(repository, prNumber, provider = null, additionalContext = '') {
+async function generateDescriptionStreaming(prUrl, repository, prNumber, provider = null, additionalContext = '') {
   const form = document.getElementById('pr-form');
   const submitBtn = form.querySelector('button[type="submit"]');
   const loadingDiv = document.getElementById('loading-indicator');
@@ -279,19 +335,20 @@ async function generateDescriptionStreaming(repository, prNumber, provider = nul
     const originalPRInfo = streamingContainer.querySelector('.original-pr-info');
 
     // Prepare request data
-    const requestData = {
-      repository: sanitizeInput(repository),
-      prNumber: sanitizeInput(prNumber)
-    };
+    const requestData = {};
+
+    // Use URL format if provided, otherwise legacy format
+    if (prUrl) {
+      requestData.prUrl = sanitizeInput(prUrl);
+    } else {
+      requestData.repository = sanitizeInput(repository);
+      requestData.prNumber = sanitizeInput(prNumber);
+    }
 
     if (provider) {
       requestData.provider = provider;
     }
 
-    if (additionalContext) {
-      requestData.additionalContext = additionalContext;
-    }
-    
     if (additionalContext && additionalContext.trim()) {
       requestData.additionalContext = additionalContext.trim();
     }
@@ -420,6 +477,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initialize advanced options toggle
   initializeAdvancedOptions();
+  
+  // Initialize legacy format toggle
+  initializeLegacyToggle();
 
   // Check available providers on page load
   checkAvailableProviders();
@@ -462,13 +522,16 @@ document.addEventListener('DOMContentLoaded', function () {
     descContainer.innerHTML = '';
     const submitButton = form.querySelector('button[type="submit"]');
     const originalButtonText = submitButton.textContent;
+    
+    // Get form values
+    const prUrl = sanitizeInput(form['pr-url'].value.trim());
     const repo = sanitizeInput(form.repo.value.trim());
     const prNumber = sanitizeInput(form['pr-number'].value.trim());
     const provider = form.provider.value;
     const streamingMode = document.getElementById('streaming-mode').checked;
     const additionalContext = sanitizeInput(form['additional-context'].value.trim());
     
-    const validationErrors = validateFormInput(repo, prNumber);
+    const validationErrors = validateFormInput(prUrl, repo, prNumber);
     if (validationErrors.length > 0) {
       displayError(validationErrors.join('. '));
       return;
@@ -476,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Use streaming if enabled
     if (streamingMode) {
-      await generateDescriptionStreaming(repo, prNumber, provider, additionalContext);
+      await generateDescriptionStreaming(prUrl, repo, prNumber, provider, additionalContext);
       return;
     }
     setLoadingState(true, submitButton, originalButtonText);
@@ -488,11 +551,17 @@ document.addEventListener('DOMContentLoaded', function () {
     while (retries <= maxRetries) {
       try {
         const requestPayload = { 
-          repository: repo, 
-          prNumber: prNumber, 
           provider: provider,
           additionalContext: additionalContext || undefined
         };
+        
+        // Add URL or legacy format
+        if (prUrl) {
+          requestPayload.prUrl = prUrl;
+        } else {
+          requestPayload.repository = repo;
+          requestPayload.prNumber = prNumber;
+        }
         loading.textContent = `Generating description using ${provider.toUpperCase()}...`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST.TIMEOUT);

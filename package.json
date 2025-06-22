@@ -13,7 +13,7 @@
     "build": "tsc && npm run copy-templates",
     "build:watch": "tsc --watch",
     "copy-templates": "copyfiles -u 1 \"src/templates/**/*\" dist/",
-    "test": "jest",
+    "test": "jest --forceExit",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit"
   },

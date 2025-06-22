@@ -46,6 +46,41 @@
   cursor: pointer;
   transition: all 0.3s ease;
 }
+
+/* Legacy format toggle styles */
+.legacy-toggle {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.legacy-toggle-btn {
+  background: transparent;
+  border: 1px solid #ddd;
+  color: #666;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+  margin: 0;
+}
+
+.legacy-toggle-btn:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.legacy-inputs {
+  border-top: 1px solid #eee;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.legacy-inputs.visible {
+  display: block;
+}
+
 #pr-form button:hover:not(:disabled) {
   background: #0065ff;
 }
