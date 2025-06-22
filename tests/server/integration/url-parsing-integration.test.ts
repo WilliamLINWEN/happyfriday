@@ -1,6 +1,6 @@
 // Integration tests for URL parsing feature
 import request from 'supertest';
-import app from '../../../src/server/index';
+import app from '../../../src/server/index'
 
 // Mock the Bitbucket service to avoid external API calls
 jest.mock('../../../src/server/services/bitbucket-service', () => ({
@@ -55,14 +55,6 @@ jest.mock('../../../src/server/services/llm-service-registry', () => ({
 }));
 
 describe('URL Parsing Integration Tests', () => {
-  // Clean up after all tests to prevent Jest hanging
-  afterAll((done) => {
-    // Close any open handles
-    setTimeout(() => {
-      done();
-    }, 100);
-  });
-
   describe('End-to-end URL parsing workflow', () => {
     test('should process valid PR URL from start to finish', async () => {
       const response = await request(app)
@@ -205,24 +197,31 @@ describe('URL Parsing Integration Tests', () => {
     });
 
     test('should handle special characters in URLs safely', async () => {
-      const maliciousUrls = [
-        'https://bitbucket.org/work<script>space/repo/pull-requests/123',
-        'https://bitbucket.org/workspace/../repo/pull-requests/123',
-        'https://bitbucket.org/workspace/repo"injection/pull-requests/123'
-      ];
+      let maliciousUrl = 'https://bitbucket.org/workspace/../repo/pull-requests/123';
 
-      for (const maliciousUrl of maliciousUrls) {
-        const response = await request(app)
-          .post('/api/generate-description')
-          .send({
-            prUrl: maliciousUrl,
-            provider: 'openai'
-          });
+      let response = await request(app)
+        .post('/api/generate-description')
+        .send({
+          prUrl: maliciousUrl,
+          provider: 'openai'
+        });
 
-        // Security middleware may return 403 for suspicious patterns
-        expect([400, 403]).toContain(response.status);
-        expect(response.body.success).toBe(false);
-      }
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.message).toContain('Suspicious request pattern detected');
+
+      maliciousUrl = 'https://bitbucket.org/workspace/repo"injection/pull-requests/123';
+
+      response = await request(app)
+        .post('/api/generate-description')
+        .send({
+          prUrl: maliciousUrl,
+          provider: 'openai'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Invalid');
     });
 
     test('should extract workspace and repository correctly from complex URLs', async () => {

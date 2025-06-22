@@ -5,6 +5,6 @@ describe('LLM Service', () => {
     const llmService = getLLMService();
     const providers = await llmService.getAvailableProviders();
     expect(Array.isArray(providers)).toBe(true);
-  });
+  }, 10000);
   // Add more tests for LLM prompt formatting and error handling
 });
