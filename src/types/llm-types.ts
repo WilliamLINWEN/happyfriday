@@ -43,6 +43,20 @@ export interface ILLMService {
   getProviderName(): TLLMProvider;
 }
 
+// DiffChunk type for chunking functionality
+export interface DiffChunk {
+  content: string;
+  index: number;
+  totalChunks: number;
+  context: {
+    files: string[];
+    changeType: 'add' | 'modify' | 'delete' | 'mixed';
+    startLine?: number;
+    endLine?: number;
+  };
+  hasOverlap: boolean;
+}
+
 export type TLLMPromptData = {
   title: string;
   description: string;
@@ -52,4 +66,9 @@ export type TLLMPromptData = {
   destinationBranch: string;
   repository: string;
   additionalContext?: string;
+  // New properties for chunking and filtering
+  chunks?: DiffChunk[];
+  requiresChunking?: boolean;
+  filteredFiles?: string[];
+  allFilesIgnored?: boolean;
 };

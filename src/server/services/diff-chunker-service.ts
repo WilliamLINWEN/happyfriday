@@ -1,17 +1,8 @@
 // Service for intelligently chunking large diffs into manageable pieces
+import { DiffChunk } from '../../types/llm-types';
 
-export interface DiffChunk {
-  content: string;
-  index: number;
-  totalChunks: number;
-  context: {
-    files: string[];
-    changeType: 'add' | 'modify' | 'delete' | 'mixed';
-    startLine?: number;
-    endLine?: number;
-  };
-  hasOverlap: boolean;
-}
+// Re-export for backward compatibility
+export { DiffChunk };
 
 export interface ChunkingConfig {
   chunkSize: number;

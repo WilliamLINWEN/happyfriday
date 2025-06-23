@@ -1,5 +1,5 @@
 // Service for aggregating results from multiple diff chunks
-import { DiffChunk } from './diff-chunker-service';
+import { DiffChunk } from '../../types/llm-types';
 
 export interface ChunkResult {
   chunkIndex: number;

@@ -34,10 +34,15 @@ export class FileFilterService {
       : [];
 
     this.config = {
-      ignorePatterns: envPatterns.length > 0 ? envPatterns : defaultPatterns,
+      ignorePatterns: defaultPatterns,
       enabled: process.env.ENABLE_FILE_FILTERING?.toLowerCase() !== 'false',
       ...config
     };
+
+    // Override with environment patterns if no config patterns provided
+    if (!config?.ignorePatterns && envPatterns.length > 0) {
+      this.config.ignorePatterns = envPatterns;
+    }
   }
 
   /**
