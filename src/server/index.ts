@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { generateDescription, generateDescriptionStream } from './api/generate-description';
 import { healthCheck, getAvailableProviders } from './api/health';
 import { testStream } from './api/test-stream';
+import { getTemplates, getTemplateMetadata, validateTemplate } from './api/templates';
 import { errorHandler, notFoundHandler } from './middleware/error-middleware';
 import { createGeneralRateLimit, createAPIRateLimit } from './middleware/rate-limiter';
 import { 
@@ -68,6 +69,11 @@ app.use(express.static('src/client'));
 app.get('/health', asyncErrorHandler(healthCheck));
 app.get('/api/providers', asyncErrorHandler(getAvailableProviders));
 
+// Template endpoints
+app.get('/api/templates', asyncErrorHandler(getTemplates));
+app.get('/api/templates/:templateName/metadata', asyncErrorHandler(getTemplateMetadata));
+app.get('/api/templates/:templateName/validate', asyncErrorHandler(validateTemplate));
+
 // Test streaming endpoint
 app.get('/api/test-stream', asyncErrorHandler(testStream));
 
@@ -86,6 +92,7 @@ app.get('/api', (req, res) => {
     endpoints: {
       health: '/health',
       providers: '/api/providers',
+      templates: '/api/templates',
       generateDescription: 'POST /api/generate-description',
       generateDescriptionStream: 'POST /api/generate-description/stream'
     }

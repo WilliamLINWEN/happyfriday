@@ -9,6 +9,7 @@ const CONFIG = {
   ENDPOINTS: {
     GENERATE_DESCRIPTION: '/api/generate-description',
     PROVIDERS: '/api/providers',
+    TEMPLATES: '/api/templates',
     HEALTH: '/health'
   },
   

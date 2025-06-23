@@ -3,9 +3,60 @@ import path from 'path';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { TLLMPromptData } from '../../types/llm-types';
 
+export interface TemplateMetadata {
+  name: string;
+  description: string;
+  language: string;
+  category: 'description' | 'review';
+}
+
+export interface AvailableTemplate {
+  filename: string;
+  metadata: TemplateMetadata;
+}
+
 export class TemplateService {
   private static templateCache: Map<string, string> = new Map();
   private static langchainTemplateCache: Map<string, PromptTemplate> = new Map();
+  private static metadataCache: Map<string, TemplateMetadata> | null = null;
+  private static readonly DEFAULT_TEMPLATE = 'pr-description-template-zh.txt';
+
+  /**
+   * Get all possible template paths
+   */
+  private static getTemplatePaths(templateName?: string): string[] {
+    const basePaths = [
+      // 生產環境路徑 (編譯後)
+      path.join(__dirname, '..', '..', 'templates'),
+      // 開發環境路徑 (ts-node)
+      path.join(__dirname, '..', '..', '..', 'src', 'templates'),
+      // 相對於當前工作目錄
+      path.join(process.cwd(), 'src', 'templates'),
+      path.join(process.cwd(), 'dist', 'templates')
+    ];
+
+    if (templateName) {
+      return basePaths.map(basePath => path.join(basePath, templateName));
+    }
+    return basePaths;
+  }
+
+  /**
+   * Find the first existing template directory
+   */
+  private static findTemplateDirectory(): string | null {
+    const basePaths = this.getTemplatePaths();
+    for (const templatePath of basePaths) {
+      try {
+        if (fs.existsSync(templatePath) && fs.statSync(templatePath).isDirectory()) {
+          return templatePath;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    return null;
+  }
 
   /**
    * 讀取模板文件內容
@@ -16,15 +67,7 @@ export class TemplateService {
     }
 
     // 嘗試多個可能的路徑
-    const possiblePaths = [
-      // 生產環境路徑 (編譯後)
-      path.join(__dirname, '..', '..', 'templates', templateName),
-      // 開發環境路徑 (ts-node)
-      path.join(__dirname, '..', '..', '..', 'src', 'templates', templateName),
-      // 相對於當前工作目錄
-      path.join(process.cwd(), 'src', 'templates', templateName),
-      path.join(process.cwd(), 'dist', 'templates', templateName)
-    ];
+    const possiblePaths = this.getTemplatePaths(templateName);
 
     let content: string | null = null;
     let lastError: Error | null = null;
@@ -97,14 +140,103 @@ export class TemplateService {
   }
 
   /**
+   * Get available templates with metadata
+   */
+  static getAvailableTemplates(): AvailableTemplate[] {
+    const templateDir = this.findTemplateDirectory();
+    if (!templateDir) {
+      console.warn('No template directory found, using default template');
+      return [{
+        filename: this.DEFAULT_TEMPLATE,
+        metadata: {
+          name: '標準 PR 描述 (中文)',
+          description: '預設的 PR 描述模板',
+          language: 'zh',
+          category: 'description'
+        }
+      }];
+    }
+
+    try {
+      // Load metadata
+      const metadataPath = path.join(templateDir, 'templates.json');
+      let metadata: Record<string, TemplateMetadata> = {};
+      
+      if (fs.existsSync(metadataPath)) {
+        const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
+        metadata = JSON.parse(metadataContent);
+        this.metadataCache = new Map(Object.entries(metadata));
+      }
+
+      // Get all .txt files in template directory
+      const templateFiles = fs.readdirSync(templateDir)
+        .filter(file => file.endsWith('.txt'))
+        .sort();
+
+      return templateFiles.map(filename => {
+        const templateMetadata = metadata[filename] || {
+          name: filename.replace('.txt', '').replace(/-/g, ' '),
+          description: 'Template file',
+          language: 'unknown',
+          category: filename.includes('review') ? 'review' as const : 'description' as const
+        };
+
+        return {
+          filename,
+          metadata: templateMetadata
+        };
+      });
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      return [{
+        filename: this.DEFAULT_TEMPLATE,
+        metadata: {
+          name: '標準 PR 描述 (中文)',
+          description: '預設的 PR 描述模板',
+          language: 'zh',
+          category: 'description'
+        }
+      }];
+    }
+  }
+
+  /**
+   * Get template metadata by filename
+   */
+  static getTemplateMetadata(templateName: string): TemplateMetadata | null {
+    if (this.metadataCache && this.metadataCache.has(templateName)) {
+      return this.metadataCache.get(templateName)!;
+    }
+
+    // Try to load metadata if not cached
+    const availableTemplates = this.getAvailableTemplates();
+    const template = availableTemplates.find(t => t.filename === templateName);
+    return template?.metadata || null;
+  }
+
+  /**
+   * Validate if template exists
+   */
+  static validateTemplate(templateName: string): boolean {
+    if (!templateName) return false;
+    
+    try {
+      this.readTemplate(templateName);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
    * 格式化 PR 數據為 LLM prompt
    */
-  static formatPRDataForPrompt(prData: TLLMPromptData): string {
-    const template = this.readTemplate('pr-description-template.txt');
+  static formatPRDataForPrompt(prData: TLLMPromptData, templateName?: string): string {
+    const template = this.readTemplate(templateName || this.DEFAULT_TEMPLATE);
     
     const variables = {
       title: prData.title,
-      description: prData.description || '無描述提供',
+      description: prData.description || (templateName?.includes('-en.txt') ? 'No description provided' : '無描述提供'),
       author: prData.author,
       repository: prData.repository,
       sourceBranch: prData.sourceBranch,
@@ -119,12 +251,12 @@ export class TemplateService {
   /**
    * Format PR data for LangChain using PromptTemplate
    */
-  static async formatPRDataForLangChain(prData: TLLMPromptData): Promise<string> {
-    const promptTemplate = this.createLangChainTemplate('pr-description-template.txt');
+  static async formatPRDataForLangChain(prData: TLLMPromptData, templateName?: string): Promise<string> {
+    const promptTemplate = this.createLangChainTemplate(templateName || this.DEFAULT_TEMPLATE);
     
     const variables = {
       title: prData.title,
-      description: prData.description || '無描述提供',
+      description: prData.description || (templateName?.includes('-en.txt') ? 'No description provided' : '無描述提供'),
       author: prData.author,
       repository: prData.repository,
       sourceBranch: prData.sourceBranch,

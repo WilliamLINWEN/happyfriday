@@ -297,7 +297,7 @@ function trackEvent(event, data) {
 }
 
 // Streaming function for real-time description generation
-async function generateDescriptionStreaming(prUrl, repository, prNumber, provider = null, additionalContext = '') {
+async function generateDescriptionStreaming(prUrl, repository, prNumber, provider = null, template = null, additionalContext = '') {
   const form = document.getElementById('pr-form');
   const submitBtn = form.querySelector('button[type="submit"]');
   const loadingDiv = document.getElementById('loading-indicator');
@@ -347,6 +347,10 @@ async function generateDescriptionStreaming(prUrl, repository, prNumber, provide
 
     if (provider) {
       requestData.provider = provider;
+    }
+
+    if (template) {
+      requestData.template = template;
     }
 
     if (additionalContext && additionalContext.trim()) {
@@ -484,6 +488,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // Check available providers on page load
   checkAvailableProviders();
 
+  // Check available templates on page load
+  checkAvailableTemplates();
+
   async function checkAvailableProviders() {
     try {
       const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.PROVIDERS}`);
@@ -516,6 +523,79 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  async function checkAvailableTemplates() {
+    try {
+      const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.TEMPLATES}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data && data.data.templates) {
+          updateTemplateOptions(data.data.templates);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not check available templates:', error);
+      // Set default template options
+      setDefaultTemplateOptions();
+    }
+  }
+
+  function updateTemplateOptions(availableTemplates) {
+    const templateSelect = document.getElementById('template');
+    const templateDescription = document.getElementById('template-description');
+    const templateDescriptionText = templateDescription.querySelector('.template-description-text');
+    
+    // Clear existing options
+    templateSelect.innerHTML = '';
+    
+    // Add templates as options
+    availableTemplates.forEach(template => {
+      const option = document.createElement('option');
+      option.value = template.filename;
+      option.textContent = template.metadata.name;
+      option.dataset.description = template.metadata.description;
+      templateSelect.appendChild(option);
+    });
+
+    // Set default selection (prefer English template if available, otherwise first template)
+    const defaultTemplate = availableTemplates.find(t => t.filename.includes('-en.txt')) || availableTemplates[0];
+    if (defaultTemplate) {
+      templateSelect.value = defaultTemplate.filename;
+      showTemplateDescription(defaultTemplate.metadata.description);
+    }
+
+    // Add event listener for template selection changes
+    templateSelect.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      if (selectedOption && selectedOption.dataset.description) {
+        showTemplateDescription(selectedOption.dataset.description);
+      } else {
+        hideTemplateDescription();
+      }
+    });
+  }
+
+  function setDefaultTemplateOptions() {
+    const templateSelect = document.getElementById('template');
+    templateSelect.innerHTML = `
+      <option value="pr-description-template-zh.txt">標準 PR 描述 (中文)</option>
+      <option value="pr-description-template-en.txt">Standard PR Description (English)</option>
+    `;
+    templateSelect.value = 'pr-description-template-en.txt';
+  }
+
+  function showTemplateDescription(description) {
+    const templateDescription = document.getElementById('template-description');
+    const templateDescriptionText = templateDescription.querySelector('.template-description-text');
+    
+    templateDescriptionText.textContent = description;
+    templateDescription.style.display = 'block';
+  }
+
+  function hideTemplateDescription() {
+    const templateDescription = document.getElementById('template-description');
+    templateDescription.style.display = 'none';
+  }
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     errorMsg.textContent = '';
@@ -528,6 +608,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const repo = sanitizeInput(form.repo.value.trim());
     const prNumber = sanitizeInput(form['pr-number'].value.trim());
     const provider = form.provider.value;
+    const template = document.getElementById('template').value;
     const streamingMode = document.getElementById('streaming-mode').checked;
     const additionalContext = sanitizeInput(form['additional-context'].value.trim());
     
@@ -539,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Use streaming if enabled
     if (streamingMode) {
-      await generateDescriptionStreaming(prUrl, repo, prNumber, provider, additionalContext);
+      await generateDescriptionStreaming(prUrl, repo, prNumber, provider, template, additionalContext);
       return;
     }
     setLoadingState(true, submitButton, originalButtonText);
@@ -552,6 +633,7 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         const requestPayload = { 
           provider: provider,
+          template: template || undefined,
           additionalContext: additionalContext || undefined
         };
         

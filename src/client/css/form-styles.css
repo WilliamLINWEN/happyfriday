@@ -122,6 +122,22 @@
   font-size: 0.95rem;
 }
 
+/* Template Selection Styles */
+.template-description {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f0f4f8;
+  border-radius: 6px;
+  border-left: 3px solid #0052cc;
+}
+
+.template-description-text {
+  color: #555;
+  font-style: italic;
+  line-height: 1.4;
+  margin: 0;
+}
+
 /* Advanced Options Styles */
 .advanced-options-section {
   margin-top: 16px;

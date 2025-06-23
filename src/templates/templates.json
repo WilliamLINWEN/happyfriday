@@ -1,0 +1,26 @@
+{
+  "pr-description-template-zh.txt": {
+    "name": "標準 PR 描述 (中文)",
+    "description": "包含背景、實作方法和測試驗證的專業 PR 描述模板",
+    "language": "zh",
+    "category": "description"
+  },
+  "pr-description-template-en.txt": {
+    "name": "Standard PR Description (English)",
+    "description": "Professional PR description template with background, implementation, and testing sections",
+    "language": "en",
+    "category": "description"
+  },
+  "pr-review-template-zh.txt": {
+    "name": "PR 程式碼審查 (中文)",
+    "description": "專業的程式碼審查模板，包含詳細分析和建議",
+    "language": "zh",
+    "category": "review"
+  },
+  "pr-review-template-en.txt": {
+    "name": "PR Code Review (English)",
+    "description": "Professional code review template with detailed analysis and suggestions",
+    "language": "en",
+    "category": "review"
+  }
+}

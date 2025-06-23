@@ -44,7 +44,8 @@ export class OpenAIService implements ILLMService {
 
       // Use enhanced template service with LangChain integration
       const systemMessage = 'You are a helpful assistant that generates comprehensive pull request descriptions based on code changes and PR information.';
-      const chatTemplate = TemplateService.createChatTemplate(systemMessage, 'pr-description-template.txt');
+      const templateName = request.template || 'pr-description-template-zh.txt';
+      const chatTemplate = TemplateService.createChatTemplate(systemMessage, templateName);
 
       // Create the chain: PromptTemplate -> LLM -> StringOutputParser
       const chain = chatTemplate.pipe(llm).pipe(new StringOutputParser());
@@ -138,7 +139,8 @@ export class OpenAIService implements ILLMService {
 
       // Use enhanced template service with LangChain integration
       const systemMessage = 'You are a helpful assistant that generates comprehensive pull request descriptions based on code changes and PR information.';
-      const chatTemplate = TemplateService.createChatTemplate(systemMessage, 'pr-description-template.txt');
+      const templateName = request.template || 'pr-description-template-zh.txt';
+      const chatTemplate = TemplateService.createChatTemplate(systemMessage, templateName);
 
       // Create the chain: PromptTemplate -> LLM -> StringOutputParser
       const chain = chatTemplate.pipe(streamingLLM).pipe(new StringOutputParser());

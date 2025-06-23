@@ -96,6 +96,170 @@ See `.env.example` for all required variables:
 - **Server**: `PORT`, `NODE_ENV`
 - Rate limiting and security settings
 
+## Template System
+
+The application supports customizable PR description templates with metadata-driven selection, allowing users to choose templates that best fit their workflow and language preferences.
+
+### Using Templates
+
+#### Web Interface
+1. Open the application in your browser at `http://localhost:3000`
+2. Select a template from the "Template" dropdown menu
+3. View the template description below the selector for guidance
+4. Enter your Bitbucket PR URL or repository/PR number
+5. Choose your preferred LLM provider
+6. Generate your PR description with the selected template
+
+#### API Usage
+
+**Get Available Templates:**
+```bash
+curl http://localhost:3000/api/templates
+```
+
+**Generate Description with Template:**
+```bash
+curl -X POST http://localhost:3000/api/generate-description \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prUrl": "https://bitbucket.org/workspace/repo/pull-requests/123",
+    "provider": "openai",
+    "template": "pr-description-template-en.txt"
+  }'
+```
+
+**Template API Endpoints:**
+- `GET /api/templates` - List all available templates
+- `GET /api/templates/:templateName/metadata` - Get template metadata  
+- `GET /api/templates/:templateName/validate` - Validate template exists
+
+### Adding New Templates
+
+#### 1. Create Template File
+Create a new `.txt` file in `src/templates/`:
+
+```markdown
+# Example: src/templates/feature-template-en.txt
+
+# Feature: {{title}}
+
+## Overview
+{{description}}
+
+## Implementation Details
+<!-- Describe the technical implementation approach -->
+
+## New Features
+- Feature 1: Description
+- Feature 2: Description
+
+## Testing Strategy
+- Unit tests for core functionality
+- Integration tests for API endpoints
+- Manual testing scenarios
+
+## Deployment Notes
+<!-- Any special deployment considerations -->
+
+**Author:** {{author}}
+**Repository:** {{repository}}  
+**Branch:** {{sourceBranch}} → {{destinationBranch}}
+
+**Additional Context:** {{additionalContext}}
+```
+
+#### 2. Add Template Metadata
+Update `src/templates/templates.json`:
+
+```json
+{
+  "feature-template-en.txt": {
+    "name": "Feature Development (English)",
+    "description": "Comprehensive template for new feature PRs with implementation details",
+    "language": "en", 
+    "category": "feature"
+  }
+}
+```
+
+**Metadata Fields:**
+- `name`: Display name shown in UI dropdown
+- `description`: Brief description for user guidance
+- `language`: Language code (`en`, `zh`, etc.)
+- `category`: Template category (`description`, `feature`, `bugfix`, `review`, etc.)
+
+#### 3. Available Template Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{title}}` | PR title |
+| `{{description}}` | PR description |
+| `{{author}}` | PR author name |
+| `{{repository}}` | Repository name |
+| `{{sourceBranch}}` | Source branch name |
+| `{{destinationBranch}}` | Target branch name |
+| `{{diff}}` | Code diff content |
+| `{{additionalContext}}` | Additional context from user |
+
+### Removing Templates
+
+#### 1. Delete Template File
+```bash
+rm src/templates/unwanted-template.txt
+```
+
+#### 2. Remove Metadata Entry
+Edit `src/templates/templates.json` and remove the corresponding entry:
+
+```json
+{
+  // Remove this entry:
+  // "unwanted-template.txt": { ... }
+}
+```
+
+### Modifying Existing Templates
+
+#### 1. Edit Template Content
+```bash
+# Edit template file directly
+vim src/templates/pr-description-template-en.txt
+```
+
+#### 2. Update Metadata (if needed)
+Modify `src/templates/templates.json` if changing template purpose:
+
+```json
+{
+  "pr-description-template-en.txt": {
+    "name": "Updated Template Name",
+    "description": "Updated description",
+    "language": "en",
+    "category": "description"
+  }
+}
+```
+
+### Template Best Practices
+
+1. **Clear Structure**: Use markdown headers and sections
+2. **Helpful Comments**: Include HTML comments as guidance
+3. **Consistent Variables**: Use standard variable names
+4. **Language Specific**: Create versions for different languages
+5. **Category Organization**: Group similar templates by category
+6. **Test Templates**: Verify formatting by generating test descriptions
+
+### Template Categories
+
+Organize templates by category for better user experience:
+
+- `description`: General PR description templates
+- `feature`: New feature development
+- `bugfix`: Bug fix and issue resolution  
+- `review`: Code review and refactoring
+- `hotfix`: Emergency fixes
+- `refactor`: Code refactoring and cleanup
+
 ## Project Structure
 ```
 ├── src/
@@ -106,6 +270,8 @@ See `.env.example` for all required variables:
 │   │   ├── services/    # Business logic services
 │   │   └── utils/       # Utility functions
 │   ├── templates/       # PR description templates
+│   │   ├── templates.json    # Template metadata configuration
+│   │   ├── *.txt            # Template files
 │   └── types/           # TypeScript type definitions
 ├── tests/               # Test files
 ├── docs/                # Documentation

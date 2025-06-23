@@ -2,6 +2,145 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Principles
+Please strictly adopt **Test-Driven Development (TDD)** approach for all code development tasks.
+
+## TDD Development Workflow
+Follow the standard **Red-Green-Refactor** cycle:
+
+### 1. 🔴 Red Phase (Write Tests)
+- **Write tests first**: Create failing test cases based on requirements
+- Tests should clearly describe expected behavior
+- Ensure tests fail (because functionality is not yet implemented)
+- Focus on one small feature at a time
+
+### 2. 🟢 Green Phase (Implement Functionality)
+- Write the **minimum amount of code** to make tests pass
+- Don't pursue perfect design, focus on making tests pass
+- Avoid over-engineering
+
+### 3. 🔵 Refactor Phase (Improve Code)
+- After tests pass, optimize code quality
+- Improve design, eliminate duplication, enhance readability
+- Ensure all tests still pass after refactoring
+
+## Test Writing Guidelines
+
+### Test Naming
+- Use descriptive test names that clearly express test purpose
+- Format: `should_[expected_behavior]_when_[condition]`
+- Example: `should_return_user_when_valid_id_provided`
+
+### Test Structure (AAA Pattern)
+```
+// Arrange - Set up test data and environment
+// Act - Execute the behavior being tested
+// Assert - Verify the results
+```
+
+### Test Coverage
+- **Unit Tests**: Test individual functions/methods
+- **Integration Tests**: Test interactions between components
+- **End-to-End Tests**: Test complete user workflows
+
+## Code Development Requirements
+
+### Development Order
+1. Analyze requirements and identify core functionality
+2. Write tests for minimum viable feature
+3. Implement functionality to make tests pass
+4. Refactor and optimize
+5. Repeat above steps until all features are complete
+
+### Code Quality Standards
+- Keep functions small and focused (Single Responsibility Principle)
+- Avoid deep nesting and complex logic
+- Use meaningful variable and function names
+- Add necessary comments for complex logic
+
+## Testing Tools and Frameworks
+This project uses **TypeScript + Express.js**, recommended testing stack:
+- **Test Framework**: Jest or Vitest
+- **Assertion Library**: Jest built-in or Chai
+- **HTTP Testing**: Supertest
+- **Mock/Spy**: Jest built-in functionality
+- **Test Database**: SQLite in-memory or MongoDB Memory Server
+- **Type Checking**: TypeScript compiler + @types/jest
+
+## TypeScript + Express.js Specific Guidelines
+
+### API Test Structure
+```typescript
+describe('POST /api/users', () => {
+  it('should_create_user_when_valid_data_provided', async () => {
+    // Arrange
+    const userData = { name: 'John', email: 'john@example.com' };
+    
+    // Act
+    const response = await request(app)
+      .post('/api/users')
+      .send(userData);
+    
+    // Assert
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject(userData);
+  });
+});
+```
+
+### Middleware Testing
+```typescript
+describe('authMiddleware', () => {
+  it('should_return_401_when_no_token_provided', async () => {
+    const response = await request(app)
+      .get('/api/protected')
+      .expect(401);
+  });
+});
+```
+
+### Dependency Injection Testing
+Use Mocks to test Service layer:
+```typescript
+jest.mock('../services/userService');
+const mockUserService = userService as jest.Mocked<typeof userService>;
+```
+
+## Common TDD Patterns
+
+### Test Doubles
+Use test doubles appropriately:
+- **Mock**: Verify interaction behavior
+- **Stub**: Provide predefined responses
+- **Fake**: Simplified implementation
+- **Spy**: Record call information
+
+### Boundary Testing
+Ensure tests cover:
+- Normal cases (Happy Path)
+- Boundary values
+- Error cases
+- Null/empty collection handling
+
+## Workflow Checklist
+
+For each new feature development:
+- [ ] Understand requirements and acceptance criteria
+- [ ] Write tests describing expected behavior
+- [ ] Confirm tests fail
+- [ ] Implement minimal code to make tests pass
+- [ ] Run all tests to ensure no regression
+- [ ] Refactor to improve code quality
+- [ ] Repeat cycle until feature is complete
+
+## Important Notes
+- **Never skip tests**: Even simple features should have tests written first
+- **Small steps**: Implement only one small feature at a time
+- **Fast feedback**: Keep test execution fast
+- **Tests as documentation**: Tests should clearly express code behavior
+- **Continuous refactoring**: Regularly improve code structure and test quality
+
+
 ## Development Commands
 
 Build and run:

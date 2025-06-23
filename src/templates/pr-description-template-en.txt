@@ -1,0 +1,51 @@
+Please generate a comprehensive Pull Request description based on the following information using the template format below:
+
+**Pull Request Title:** {{title}}
+
+**Current Description:** {{description}}
+
+**Author:** {{author}}
+
+**Repository:** {{repository}}
+
+**Source Branch:** {{sourceBranch}}
+
+**Target Branch:** {{destinationBranch}}
+
+**Changes (diff):**
+```diff
+{{diff}}
+```
+
+**Additional Context:** {{additionalContext}}
+
+Please generate a description using the following template format:
+
+## Background (Why)
+
+<!-- Describe the background of this PR. Why is this PR needed? What problem does it solve? -->
+
+## Implementation Approach (How)
+
+<!-- Describe the implementation approach and architectural decisions made. -->
+
+## Changes Made (What)
+
+<!-- Highlight the main changes implemented in this merge request. Specifically explain what you changed and why. -->
+
+- Feature/Change 1
+- Feature/Change 2
+
+### Testing & Validation
+
+<!-- List the test cases that have been validated. Include edge cases. -->
+
+- Test scenario 1
+- Test scenario 2
+- Test scenario 3
+
+## Additional Notes
+
+<!-- Any information helpful for PR reviewers (e.g., known limitations, future TODOs) -->
+
+Please respond in Markdown format, keeping it professional and concise.

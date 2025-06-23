@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { fetchPullRequest, fetchPullRequestDiff } from '../services/bitbucket-service';
 import { getLLMService } from '../services/llm-service-registry';
+import { TemplateService } from '../services/template-service';
 import { TLLMProvider, TLLMRequest } from '../../types/llm-types';
 import { formatSuccessResponse, formatErrorResponse, formatValidationErrorResponse } from '../utils/response-formatter';
 import { AppError, createValidationError, createServiceUnavailableError } from '../utils/error-handler';
@@ -17,6 +18,7 @@ interface TGenerateDescriptionRequest {
   prNumber?: string;
   // Common fields
   provider?: TLLMProvider;
+  template?: string;
   additionalContext?: string;
   options?: {
     model?: string;
@@ -68,9 +70,15 @@ export async function generateDescription(req: Request, res: Response, next: Nex
     }
 
     const { repository, prNumber } = inputResult;
-    const { provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
+    const { provider, template, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
-    console.log(`Starting PR description generation for ${repository}#${prNumber}`);
+    // Validate template if provided
+    if (template && !TemplateService.validateTemplate(template)) {
+      res.status(400).json(formatErrorResponse(`Invalid template: ${template}`));
+      return;
+    }
+
+    console.log(`Starting PR description generation for ${repository}#${prNumber}${template ? ` with template: ${template}` : ''}`);
 
     // Fetch PR details from Bitbucket
     const prResponse = await fetchPullRequest(repository, prNumber);
@@ -116,6 +124,7 @@ export async function generateDescription(req: Request, res: Response, next: Nex
         repository: pr.source.repository.full_name,
         additionalContext: additionalContext || ''
       },
+      template,
       options
     };
     console.log(`Using LLM provider: ${selectedProvider}`);
@@ -170,9 +179,22 @@ export async function generateDescriptionStream(req: Request, res: Response, nex
     }
 
     const { repository, prNumber } = inputResult;
-    const { provider, additionalContext, options }: TGenerateDescriptionRequest = req.body;
+    const { provider, template, additionalContext, options }: TGenerateDescriptionRequest = req.body;
 
-    console.log(`Starting streaming PR description generation for ${repository}#${prNumber}`);
+    // Validate template if provided
+    if (template && !TemplateService.validateTemplate(template)) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ error: `Invalid template: ${template}` })}\n\n`);
+      res.end();
+      return;
+    }
+
+    console.log(`Starting streaming PR description generation for ${repository}#${prNumber}${template ? ` with template: ${template}` : ''}`);
 
     // Set up Server-Sent Events headers
     res.writeHead(200, {
@@ -249,6 +271,7 @@ export async function generateDescriptionStream(req: Request, res: Response, nex
         repository: pr.source.repository.full_name,
         additionalContext: additionalContext || ''
       },
+      template,
       options
     };
 
