@@ -216,3 +216,36 @@ Tests are organized in `tests/` with separate client and server test suites. Use
 The `/api/generate-description` endpoint accepts either:
 - URL format: `{ "prUrl": "https://bitbucket.org/workspace/repo/pull-requests/123", "provider": "openai" }`
 - Legacy format: `{ "repository": "workspace/repo", "prNumber": "123", "provider": "openai" }`
+
+### New Features
+
+**Intelligent Diff Chunking**:
+- Service for breaking large diffs into manageable chunks for LLM processing
+- Three-tier chunking strategy: file-level → hunk-level → size-based with overlap
+- Configurable chunk sizes and overlap to prevent context loss
+- Smart boundary detection to avoid splitting within diff hunks
+
+**File Filtering System**:
+- Configurable pattern-based filtering to ignore irrelevant files (lock files, build artifacts, etc.)
+- Supports glob patterns for flexible file matching
+- Default patterns for common files: package-lock.json, *.lock, go.sum, etc.
+- Environment variable configuration for easy customization
+
+**Result Aggregation**:
+- Intelligent merging of multiple chunk processing results
+- Deduplication of similar descriptions
+- Formatted output with bullet points for multiple changes
+- Graceful handling of partial failures with appropriate error messages
+
+**Configuration Files**:
+- `src/server/services/diff-chunker-service.ts` - Core chunking logic
+- `src/server/services/file-filter-service.ts` - File filtering and pattern matching
+- `src/server/services/result-aggregator-service.ts` - Result merging and formatting
+
+**Environment Variables**:
+- `ENABLE_CHUNKING` - Enable/disable diff chunking (default: true)
+- `DIFF_CHUNK_SIZE` - Maximum chunk size in characters (default: 4000)
+- `DIFF_CHUNK_OVERLAP` - Overlap between chunks (default: 200)
+- `MAX_CHUNKS` - Maximum number of chunks to process (default: 10)
+- `ENABLE_FILE_FILTERING` - Enable/disable file filtering (default: true)
+- `IGNORE_PATTERNS` - Comma-separated list of file patterns to ignore
