@@ -13,7 +13,7 @@ export async function getTemplates(req: Request, res: Response, next: NextFuncti
 
     const availableTemplates = TemplateService.getAvailableTemplates();
     
-    if (availableTemplates.length === 0) {
+    if (!availableTemplates || availableTemplates.length === 0) {
       logWarn('No templates found');
       res.status(404).json(formatErrorResponse('No templates available'));
       return;
