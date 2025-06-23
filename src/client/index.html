@@ -34,6 +34,14 @@
         <option value="claude">Claude (Anthropic)</option>
         <option value="ollama">Ollama (Local)</option>
       </select>
+
+      <label for="template">Template</label>
+      <select id="template" name="template">
+        <option value="">Loading templates...</option>
+      </select>
+      <div class="template-description" id="template-description" style="display: none;">
+        <small class="template-description-text"></small>
+      </div>
       
       <div class="streaming-toggle">
         <input type="checkbox" id="streaming-mode" name="streaming-mode" checked />

@@ -18,6 +18,7 @@ export type TLLMRequest = {
     repository: string;
     additionalContext?: string;
   };
+  template?: string;
   options?: {
     model?: string;
     maxTokens?: number;
