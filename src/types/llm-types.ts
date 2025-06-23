@@ -6,43 +6,6 @@ export enum TLLMProvider {
   OLLAMA = 'ollama'
 }
 
-export type TLLMRequest = {
-  provider: TLLMProvider;
-  prData: {
-    title: string;
-    description: string;
-    diff: string;
-    author: string;
-    sourceBranch: string;
-    destinationBranch: string;
-    repository: string;
-    additionalContext?: string;
-  };
-  template?: string;
-  options?: {
-    model?: string;
-    maxTokens?: number;
-    temperature?: number;
-  };
-};
-
-export type TLLMResponse = {
-  success: boolean;
-  data?: {
-    description: string;
-    provider: TLLMProvider;
-    model?: string;
-  };
-  error?: string;
-};
-
-export interface ILLMService {
-  generateDescription(request: TLLMRequest): Promise<TLLMResponse>;
-  generateDescriptionWithCallback?(request: TLLMRequest, onToken?: (token: string) => void): Promise<TLLMResponse>;
-  isAvailable(): Promise<boolean>;
-  getProviderName(): TLLMProvider;
-}
-
 // DiffChunk type for chunking functionality
 export interface DiffChunk {
   content: string;
@@ -72,3 +35,31 @@ export type TLLMPromptData = {
   filteredFiles?: string[];
   allFilesIgnored?: boolean;
 };
+
+export type TLLMRequest = {
+  provider: TLLMProvider;
+  prData: TLLMPromptData;
+  template?: string;
+  options?: {
+    model?: string;
+    maxTokens?: number;
+    temperature?: number;
+  };
+};
+
+export type TLLMResponse = {
+  success: boolean;
+  data?: {
+    description: string;
+    provider: TLLMProvider;
+    model?: string;
+  };
+  error?: string;
+};
+
+export interface ILLMService {
+  generateDescription(request: TLLMRequest): Promise<TLLMResponse>;
+  generateDescriptionWithCallback?(request: TLLMRequest, onToken?: (token: string) => void): Promise<TLLMResponse>;
+  isAvailable(): Promise<boolean>;
+  getProviderName(): TLLMProvider;
+}
