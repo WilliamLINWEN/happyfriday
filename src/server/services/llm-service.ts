@@ -1,16 +1,19 @@
 // Base LLM service interface and implementation
 import dotenv from 'dotenv';
-import { TLLMProvider, TLLMRequest, TLLMResponse, ILLMService, TLLMPromptData } from '../../types/llm-types';
+import { TLLMProvider, TLLMRequest, TLLMResponse, ILLMService, TLLMPromptData, DiffChunk } from '../../types/llm-types';
 import { TemplateService } from './template-service';
 import { optimizePrompt } from './llm-prompt-optimizer';
+import { ResultAggregatorService, ChunkResult } from './result-aggregator-service';
 
 dotenv.config();
 
 export class LLMService {
   private services: Map<TLLMProvider, ILLMService>;
+  private resultAggregator: ResultAggregatorService;
 
   constructor() {
     this.services = new Map();
+    this.resultAggregator = new ResultAggregatorService();
     // Services will be registered dynamically to avoid circular dependencies
   }
 
@@ -41,6 +44,11 @@ export class LLMService {
       // Optimize prompt data before sending to LLM
       if (request.prData) {
         request.prData = optimizePrompt(request.prData);
+      }
+
+      // Check if request requires chunking
+      if (request.prData?.requiresChunking && request.prData?.chunks) {
+        return await this.generateDescriptionChunked(request);
       }
 
       return await service.generateDescription(request);
@@ -78,6 +86,11 @@ export class LLMService {
       // Optimize prompt data before sending to LLM
       if (request.prData) {
         request.prData = optimizePrompt(request.prData);
+      }
+
+      // Check if request requires chunking
+      if (request.prData?.requiresChunking && request.prData?.chunks) {
+        return await this.generateDescriptionStreamChunked(request, onToken);
       }
 
       // Check if service supports streaming
@@ -138,6 +151,181 @@ export class LLMService {
     }
     
     return cleanResponse;
+  }
+
+  async generateDescriptionChunked(request: TLLMRequest): Promise<TLLMResponse> {
+    try {
+      const service = this.services.get(request.provider);
+      if (!service) {
+        return {
+          success: false,
+          error: `Unsupported LLM provider: ${request.provider}`
+        };
+      }
+
+      const prData = request.prData;
+      if (!prData?.chunks || prData.chunks.length === 0) {
+        return {
+          success: false,
+          error: 'No chunks to process'
+        };
+      }
+
+      console.info(`Processing ${prData.chunks.length} chunks using ${request.provider} service`);
+
+      const chunkResults: ChunkResult[] = [];
+
+      // Process each chunk sequentially
+      for (const chunk of prData.chunks) {
+        const chunkRequest: TLLMRequest = {
+          ...request,
+          prData: {
+            ...prData,
+            diff: chunk.content,
+            additionalContext: `Processing chunk ${chunk.index + 1} of ${chunk.totalChunks}. ${prData.additionalContext || ''}`
+          }
+        };
+
+        try {
+          const response = await service.generateDescription(chunkRequest);
+          
+          chunkResults.push({
+            chunkIndex: chunk.index,
+            success: response.success,
+            description: response.data?.description || '',
+            error: response.error
+          });
+
+          console.info(`Chunk ${chunk.index + 1}/${chunk.totalChunks} processed: ${response.success ? 'success' : 'failed'}`);
+        } catch (error) {
+          chunkResults.push({
+            chunkIndex: chunk.index,
+            success: false,
+            description: '',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          console.error(`Chunk ${chunk.index + 1}/${chunk.totalChunks} failed:`, error);
+        }
+      }
+
+      // Aggregate results
+      const aggregatedResult = this.resultAggregator.aggregateResults(prData.chunks, chunkResults);
+
+      if (!aggregatedResult.success) {
+        return {
+          success: false,
+          error: `Failed to process chunked request: ${aggregatedResult.error}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          description: aggregatedResult.description,
+          provider: request.provider,
+          model: request.options?.model
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Failed to process chunked request: ${error.message}`
+      };
+    }
+  }
+
+  async generateDescriptionStreamChunked(
+    request: TLLMRequest, 
+    onToken: (token: string) => void
+  ): Promise<TLLMResponse> {
+    try {
+      const service = this.services.get(request.provider);
+      if (!service) {
+        return {
+          success: false,
+          error: `Unsupported LLM provider: ${request.provider}`
+        };
+      }
+
+      const prData = request.prData;
+      if (!prData?.chunks || prData.chunks.length === 0) {
+        return {
+          success: false,
+          error: 'No chunks to process'
+        };
+      }
+
+      console.info(`Streaming ${prData.chunks.length} chunks using ${request.provider} service`);
+
+      const chunkResults: ChunkResult[] = [];
+
+      // Process each chunk sequentially with streaming
+      for (const chunk of prData.chunks) {
+        const chunkRequest: TLLMRequest = {
+          ...request,
+          prData: {
+            ...prData,
+            diff: chunk.content,
+            additionalContext: `Processing chunk ${chunk.index + 1} of ${chunk.totalChunks}. ${prData.additionalContext || ''}`
+          }
+        };
+
+        try {
+          let response: TLLMResponse;
+          
+          if (service.generateDescriptionWithCallback) {
+            response = await service.generateDescriptionWithCallback(chunkRequest, onToken);
+          } else {
+            // Fallback to non-streaming
+            response = await service.generateDescription(chunkRequest);
+            if (response.success && response.data) {
+              onToken(response.data.description);
+            }
+          }
+          
+          chunkResults.push({
+            chunkIndex: chunk.index,
+            success: response.success,
+            description: response.data?.description || '',
+            error: response.error
+          });
+
+          console.info(`Streamed chunk ${chunk.index + 1}/${chunk.totalChunks}: ${response.success ? 'success' : 'failed'}`);
+        } catch (error) {
+          chunkResults.push({
+            chunkIndex: chunk.index,
+            success: false,
+            description: '',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          console.error(`Streaming chunk ${chunk.index + 1}/${chunk.totalChunks} failed:`, error);
+        }
+      }
+
+      // Aggregate results
+      const aggregatedResult = this.resultAggregator.aggregateResults(prData.chunks, chunkResults);
+
+      if (!aggregatedResult.success) {
+        return {
+          success: false,
+          error: `Failed to process streamed chunked request: ${aggregatedResult.error}`
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          description: aggregatedResult.description,
+          provider: request.provider,
+          model: request.options?.model
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Failed to process streamed chunked request: ${error.message}`
+      };
+    }
   }
 
   static handleError(error: any, provider: TLLMProvider): TLLMResponse {

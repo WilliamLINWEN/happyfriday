@@ -6,18 +6,39 @@ export enum TLLMProvider {
   OLLAMA = 'ollama'
 }
 
+// DiffChunk type for chunking functionality
+export interface DiffChunk {
+  content: string;
+  index: number;
+  totalChunks: number;
+  context: {
+    files: string[];
+    changeType: 'add' | 'modify' | 'delete' | 'mixed';
+    startLine?: number;
+    endLine?: number;
+  };
+  hasOverlap: boolean;
+}
+
+export type TLLMPromptData = {
+  title: string;
+  description: string;
+  diff: string;
+  author: string;
+  sourceBranch: string;
+  destinationBranch: string;
+  repository: string;
+  additionalContext?: string;
+  // New properties for chunking and filtering
+  chunks?: DiffChunk[];
+  requiresChunking?: boolean;
+  filteredFiles?: string[];
+  allFilesIgnored?: boolean;
+};
+
 export type TLLMRequest = {
   provider: TLLMProvider;
-  prData: {
-    title: string;
-    description: string;
-    diff: string;
-    author: string;
-    sourceBranch: string;
-    destinationBranch: string;
-    repository: string;
-    additionalContext?: string;
-  };
+  prData: TLLMPromptData;
   template?: string;
   options?: {
     model?: string;
@@ -42,14 +63,3 @@ export interface ILLMService {
   isAvailable(): Promise<boolean>;
   getProviderName(): TLLMProvider;
 }
-
-export type TLLMPromptData = {
-  title: string;
-  description: string;
-  diff: string;
-  author: string;
-  sourceBranch: string;
-  destinationBranch: string;
-  repository: string;
-  additionalContext?: string;
-};
