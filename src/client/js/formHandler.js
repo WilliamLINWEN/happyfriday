@@ -202,6 +202,9 @@ function setLoadingState(isLoading, button, originalText) {
 function displayPRDescription(data) {
   const descContainer = document.getElementById('pr-description-container');
   
+  // Store the generated description globally for keyboard shortcuts
+  lastGeneratedDescription = data.generatedDescription;
+  
   // Clear existing content
   descContainer.innerHTML = '';
   
@@ -222,6 +225,9 @@ function displayPRDescription(data) {
   copyButton.textContent = 'Copy to Clipboard';
   copyButton.className = 'copy-button';
   copyButton.onclick = () => copyToClipboard(data.generatedDescription, copyButton);
+  
+  // Store reference for keyboard shortcuts
+  lastCopyButton = copyButton;
   
   descSection.appendChild(descTitle);
   descSection.appendChild(descContent);
@@ -269,23 +275,44 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Function to copy text to clipboard
+// Function to copy text to clipboard with enhanced visual feedback
 async function copyToClipboard(text, button) {
   try {
     await navigator.clipboard.writeText(text);
+    
+    // Store original state
     const originalText = button.textContent;
+    const originalClass = button.className;
+    
+    // Apply success state
+    button.classList.add('copied');
     button.textContent = 'Copied!';
-    button.style.backgroundColor = '#4caf50';
+    
+    // Provide haptic feedback if available
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+    
+    // Reset to original state after 2 seconds
+    setTimeout(() => {
+      button.textContent = originalText;
+      button.className = originalClass;
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
+    
+    // Show error state
+    const originalText = button.textContent;
+    const originalClass = button.className;
+    
+    button.textContent = 'Copy failed';
+    button.style.background = '#dc3545';
     
     setTimeout(() => {
       button.textContent = originalText;
-      button.style.backgroundColor = '';
-    }, 2000);
-  } catch (error) {
-    console.error('Failed to copy to clipboard:', error);
-    button.textContent = 'Copy failed';
-    setTimeout(() => {
-      button.textContent = 'Copy to Clipboard';
+      button.className = originalClass;
+      button.style.background = '';
     }, 2000);
   }
 }
@@ -324,6 +351,9 @@ async function generateDescriptionStreaming(prUrl, repository, prNumber, provide
         <div class="streaming-text-container">
           <h4>Generated Description:</h4>
           <div class="streaming-text"></div>
+          <div class="streaming-controls">
+            <button class="copy-button streaming-copy-btn" style="display: none;">Copy Current Text</button>
+          </div>
         </div>
       </div>
     `;
@@ -333,6 +363,15 @@ async function generateDescriptionStreaming(prUrl, repository, prNumber, provide
 
     const streamingText = streamingContainer.querySelector('.streaming-text');
     const originalPRInfo = streamingContainer.querySelector('.original-pr-info');
+    const streamingCopyBtn = streamingContainer.querySelector('.streaming-copy-btn');
+    
+    // Add event listener for streaming copy button
+    streamingCopyBtn.addEventListener('click', () => {
+      const currentText = streamingText.textContent || '';
+      if (currentText.trim()) {
+        copyToClipboard(currentText, streamingCopyBtn);
+      }
+    });
 
     // Prepare request data
     const requestData = {};
@@ -425,6 +464,11 @@ async function generateDescriptionStreaming(prUrl, repository, prNumber, provide
               streamingText.textContent = data.content || '';
               // Auto-scroll to bottom
               streamingText.scrollTop = streamingText.scrollHeight;
+              
+              // Show copy button when text starts appearing
+              if ((data.content || '').trim() && streamingCopyBtn.style.display === 'none') {
+                streamingCopyBtn.style.display = 'inline-flex';
+              }
             }
             
             if (data.generatedDescription && data.metadata) {
@@ -467,6 +511,43 @@ async function generateDescriptionStreaming(prUrl, repository, prNumber, provide
   }
 }
 
+// Global variables for keyboard shortcuts
+let lastGeneratedDescription = '';
+let lastCopyButton = null;
+
+// Function to handle keyboard shortcuts
+function handleKeyboardShortcuts(event) {
+  // Ctrl+C (or Cmd+C on Mac) when description container is focused or visible
+  if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+    const descContainer = document.getElementById('pr-description-container');
+    const streamingText = document.querySelector('.streaming-text');
+    
+    // Check if user is not in an input field
+    const isInInput = event.target.tagName === 'INPUT' || 
+                     event.target.tagName === 'TEXTAREA' || 
+                     event.target.isContentEditable;
+    
+    if (!isInInput && (descContainer.children.length > 0 || streamingText)) {
+      event.preventDefault();
+      
+      // Try to copy from the main description first
+      const copyButton = document.querySelector('.pr-description-section .copy-button');
+      if (copyButton && lastGeneratedDescription) {
+        copyToClipboard(lastGeneratedDescription, copyButton);
+        return;
+      }
+      
+      // Fall back to streaming text if available
+      if (streamingText && streamingText.textContent.trim()) {
+        const streamingCopyBtn = document.querySelector('.streaming-copy-btn');
+        if (streamingCopyBtn) {
+          copyToClipboard(streamingText.textContent, streamingCopyBtn);
+        }
+      }
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('pr-form');
   const loading = document.getElementById('loading-indicator');
@@ -478,6 +559,9 @@ document.addEventListener('DOMContentLoaded', function () {
     console.error('Form element not found!');
     return;
   }
+  
+  // Add keyboard shortcut listener
+  document.addEventListener('keydown', handleKeyboardShortcuts);
 
   // Initialize advanced options toggle
   initializeAdvancedOptions();
