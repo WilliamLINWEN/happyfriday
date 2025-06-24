@@ -3,6 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Development Principles
+** IMPORTANT do not change/commit any code on main branch. ** \n
+
 Please strictly adopt **Test-Driven Development (TDD)** approach for all code development tasks.
 
 ## TDD Development Workflow
