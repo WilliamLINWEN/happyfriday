@@ -20,6 +20,7 @@ interface FileBlock {
 export class DiffChunkerService {
   private config: ChunkingConfig;
   private readonly MIN_CHUNK_SIZE = 100; // Minimum viable chunk size
+  private readonly AVERAGE_LINE_LENGTH = 50; // Average characters per line in diffs
 
   constructor(config?: Partial<ChunkingConfig>) {
     const globalConfig = getConfigManager().getChunkingConfig();
@@ -162,7 +163,7 @@ export class DiffChunkerService {
       // Add overlap for next chunk
       if (lineIndex < lines.length) {
         const overlapLines = Math.min(
-          Math.floor(this.config.overlapSize / AVERAGE_LINE_LENGTH),
+          Math.floor(this.config.overlapSize / this.AVERAGE_LINE_LENGTH),
           lineIndex - startIndex
         );
         lineIndex = Math.max(startIndex + 1, lineIndex - overlapLines);
