@@ -46,6 +46,12 @@ describe('LLM Prompt Optimizer Integration', () => {
       // Arrange
       process.env.ENABLE_CHUNKING = 'true';
       process.env.DIFF_CHUNK_SIZE = '100';
+      process.env.DIFF_CHUNK_OVERLAP = '20';
+      process.env.LLM_PROMPT_MAX_DIFF = '10000'; // Large limit to prevent truncation
+      
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
       
       const largeDiff = `diff --git a/file1.js b/file1.js
 +${'line '.repeat(20)}
@@ -69,12 +75,25 @@ diff --git a/file2.js b/file2.js
       expect(result.chunks).toBeDefined();
       expect(result.chunks!.length).toBeGreaterThan(1);
       expect(result.requiresChunking).toBe(true);
+
+      // Cleanup
+      delete process.env.ENABLE_CHUNKING;
+      delete process.env.DIFF_CHUNK_SIZE;
+      delete process.env.DIFF_CHUNK_OVERLAP;
+      delete process.env.LLM_PROMPT_MAX_DIFF;
+      ConfigManager.clearInstance();
     });
 
     it('should_filter_ignored_files_before_chunking', () => {
       // Arrange
       process.env.ENABLE_CHUNKING = 'true';
       process.env.ENABLE_FILE_FILTERING = 'true';
+      process.env.DIFF_CHUNK_SIZE = '300';
+      process.env.DIFF_CHUNK_OVERLAP = '50';
+
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
       
       const diffWithIgnoredFiles = `diff --git a/package-lock.json b/package-lock.json
 +lock file changes
@@ -98,12 +117,24 @@ diff --git a/src/main.js b/src/main.js
       expect(result.diff).not.toContain('package-lock.json');
       expect(result.diff).toContain('src/main.js');
       expect(result.filteredFiles).toContain('package-lock.json');
+
+      // Cleanup
+      delete process.env.ENABLE_CHUNKING;
+      delete process.env.ENABLE_FILE_FILTERING;
+      delete process.env.DIFF_CHUNK_SIZE;
+      delete process.env.DIFF_CHUNK_OVERLAP;
+      ConfigManager.clearInstance();
     });
 
     it('should_handle_small_diff_without_chunking', () => {
       // Arrange
       process.env.ENABLE_CHUNKING = 'true';
       process.env.DIFF_CHUNK_SIZE = '1000';
+      process.env.DIFF_CHUNK_OVERLAP = '50';
+
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
       
       const smallDiff = 'diff --git a/small.js b/small.js\n+small change';
 
@@ -124,6 +155,12 @@ diff --git a/src/main.js b/src/main.js
       expect(result.requiresChunking).toBe(false);
       expect(result.chunks).toBeUndefined();
       expect(result.diff).toBe(smallDiff);
+
+      // Cleanup
+      delete process.env.ENABLE_CHUNKING;
+      delete process.env.DIFF_CHUNK_SIZE;
+      delete process.env.DIFF_CHUNK_OVERLAP;
+      ConfigManager.clearInstance();
     });
   });
 
@@ -162,6 +199,10 @@ diff --git a/yarn.lock b/yarn.lock
       process.env.ENABLE_FILE_FILTERING = 'true';
       process.env.IGNORE_PATTERNS = 'custom.txt,*.tmp';
       
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
+      
       const customIgnoreDiff = `diff --git a/custom.txt b/custom.txt
 +custom file
 diff --git a/test.tmp b/test.tmp
@@ -186,6 +227,11 @@ diff --git a/keep.js b/keep.js
       expect(result.diff).not.toContain('custom.txt');
       expect(result.diff).not.toContain('test.tmp');
       expect(result.diff).toContain('keep.js');
+
+      // Cleanup
+      delete process.env.ENABLE_FILE_FILTERING;
+      delete process.env.IGNORE_PATTERNS;
+      ConfigManager.clearInstance();
     });
   });
 
@@ -194,7 +240,12 @@ diff --git a/keep.js b/keep.js
       // Arrange
       process.env.ENABLE_CHUNKING = 'true';
       process.env.ENABLE_FILE_FILTERING = 'true';
-      process.env.DIFF_CHUNK_SIZE = '100';
+      process.env.DIFF_CHUNK_SIZE = '300';
+      process.env.DIFF_CHUNK_OVERLAP = '50';
+      
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
       
       const mixedLargeDiff = `diff --git a/package-lock.json b/package-lock.json
 ${'+ lock line\n'.repeat(50)}
@@ -221,6 +272,13 @@ ${'+ more code\n'.repeat(20)}`;
       expect(result.requiresChunking).toBe(true);
       expect(result.chunks).toBeDefined();
       expect(result.chunks!.length).toBeGreaterThan(1);
+
+      // Cleanup
+      delete process.env.ENABLE_CHUNKING;
+      delete process.env.ENABLE_FILE_FILTERING;
+      delete process.env.DIFF_CHUNK_SIZE;
+      delete process.env.DIFF_CHUNK_OVERLAP;
+      ConfigManager.clearInstance();
       
       // All chunks should not contain ignored files
       result.chunks!.forEach(chunk => {

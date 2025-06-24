@@ -120,6 +120,10 @@ diff --git a/yarn.lock b/yarn.lock
       // Arrange
       process.env.IGNORE_PATTERNS = 'test.txt,*.tmp,build/**';
 
+      // Clear config manager instance to pick up env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
+
       // Act
       const newService = new FileFilterService();
       const config = newService.getConfig();
@@ -129,6 +133,7 @@ diff --git a/yarn.lock b/yarn.lock
 
       // Cleanup
       delete process.env.IGNORE_PATTERNS;
+      ConfigManager.clearInstance();
     });
 
     it('should_have_default_ignore_patterns', () => {
