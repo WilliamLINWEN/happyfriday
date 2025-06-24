@@ -162,7 +162,7 @@ export class DiffChunkerService {
       // Add overlap for next chunk
       if (lineIndex < lines.length) {
         const overlapLines = Math.min(
-          Math.floor(this.config.overlapSize / 50),
+          Math.floor(this.config.overlapSize / AVERAGE_LINE_LENGTH),
           lineIndex - startIndex
         );
         lineIndex = Math.max(startIndex + 1, lineIndex - overlapLines);
