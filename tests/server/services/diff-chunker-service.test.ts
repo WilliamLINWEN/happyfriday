@@ -106,6 +106,10 @@ index 7654321..gfedcba 100644
       process.env.MAX_CHUNKS = '3';
       process.env.ENABLE_CHUNKING = 'true';
       
+      // Create a new ConfigManager instance to pick up the env vars
+      const { ConfigManager } = require('../../../src/server/utils/config-manager');
+      ConfigManager.clearInstance();
+      
       // Act
       const newService = new DiffChunkerService();
       const config = newService.getConfig();
@@ -121,6 +125,7 @@ index 7654321..gfedcba 100644
       delete process.env.DIFF_CHUNK_OVERLAP;
       delete process.env.MAX_CHUNKS;
       delete process.env.ENABLE_CHUNKING;
+      ConfigManager.clearInstance();
     });
 
     it('should_allow_config_updates', () => {

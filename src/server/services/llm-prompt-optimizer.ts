@@ -2,8 +2,9 @@
 import { TLLMPromptData } from '../../types/llm-types';
 import { DiffChunkerService } from './diff-chunker-service';
 import { FileFilterService } from './file-filter-service';
+import { getConfigManager } from '../utils/config-manager';
 
-// Service factory functions to ensure fresh instances with current env vars
+// Service factory functions to ensure fresh instances with current config
 function createDiffChunker() {
   return new DiffChunkerService();
 }
@@ -30,7 +31,8 @@ export function optimizePrompt(prData: TLLMPromptData): TLLMPromptData {
   let allFilesIgnored = false;
 
   // Step 1: Apply file filtering if enabled
-  const filteringEnabled = process.env.ENABLE_FILE_FILTERING?.toLowerCase() !== 'false';
+  const config = getConfigManager();
+  const filteringEnabled = config.getFileFilteringConfig().enabled;
   if (filteringEnabled && diff) {
     const fileFilter = createFileFilter();
     const originalFiles = fileFilter.extractModifiedFiles(diff);
@@ -46,7 +48,7 @@ export function optimizePrompt(prData: TLLMPromptData): TLLMPromptData {
   }
 
   // Step 2: Apply chunking if enabled and needed
-  const chunkingEnabled = process.env.ENABLE_CHUNKING?.toLowerCase() === 'true';
+  const chunkingEnabled = config.getChunkingConfig().enabled;
   if (chunkingEnabled && diff && !allFilesIgnored) {
     const diffChunker = createDiffChunker();
     const chunks = diffChunker.chunkDiff(diff);
@@ -66,10 +68,10 @@ export function optimizePrompt(prData: TLLMPromptData): TLLMPromptData {
 
   // Step 3: Fall back to legacy truncation if chunking is disabled or not needed
   if (!chunkingEnabled && diff) {
-    const MAX_DIFF_LENGTH = parseInt(process.env.LLM_PROMPT_MAX_DIFF || '8000');
-    if (diff.length > MAX_DIFF_LENGTH) {
-      console.warn(`PR diff is too long (${diff.length} characters). Truncating to ${MAX_DIFF_LENGTH} characters.`);
-      diff = diff.substring(0, MAX_DIFF_LENGTH) + '... (diff truncated)';
+    const maxDiffLength = config.getLLMPromptConfig().maxDiffLength;
+    if (diff.length > maxDiffLength) {
+      console.warn(`PR diff is too long (${diff.length} characters). Truncating to ${maxDiffLength} characters.`);
+      diff = diff.substring(0, maxDiffLength) + '... (diff truncated)';
     }
   }
 

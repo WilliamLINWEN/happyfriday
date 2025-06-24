@@ -1,5 +1,6 @@
 // Service for filtering out ignored files from diffs
 import { minimatch } from 'minimatch';
+import { getConfigManager } from '../utils/config-manager';
 
 export interface FileFilterConfig {
   ignorePatterns: string[];
@@ -8,41 +9,37 @@ export interface FileFilterConfig {
 
 export class FileFilterService {
   private config: FileFilterConfig;
+  private compiledPatterns: Map<string, RegExp> = new Map();
 
   constructor(config?: Partial<FileFilterConfig>) {
-    const defaultPatterns = [
-      'package-lock.json',
-      'yarn.lock',
-      'Gemfile.lock',
-      'composer.lock',
-      'Pipfile.lock',
-      'go.sum',
-      'go.mod',
-      '*.lock',
-      'node_modules/**',
-      'vendor/**',
-      'dist/**',
-      'build/**',
-      'coverage/**',
-      '.DS_Store',
-      'Thumbs.db'
-    ];
-
-    // Parse environment variable patterns
-    const envPatterns = process.env.IGNORE_PATTERNS 
-      ? process.env.IGNORE_PATTERNS.split(',').map(p => p.trim())
-      : [];
+    const globalConfig = getConfigManager().getFileFilteringConfig();
+    
+    // Combine default and custom patterns
+    const allPatterns = globalConfig.customIgnorePatterns.length > 0 
+      ? globalConfig.customIgnorePatterns 
+      : globalConfig.defaultIgnorePatterns;
 
     this.config = {
-      ignorePatterns: defaultPatterns,
-      enabled: process.env.ENABLE_FILE_FILTERING?.toLowerCase() !== 'false',
+      ignorePatterns: allPatterns,
+      enabled: globalConfig.enabled,
       ...config
     };
 
-    // Override with environment patterns if no config patterns provided
-    if (!config?.ignorePatterns && envPatterns.length > 0) {
-      this.config.ignorePatterns = envPatterns;
+    this.precompilePatterns();
+  }
+
+  private precompilePatterns(): void {
+    this.compiledPatterns.clear();
+    for (const pattern of this.config.ignorePatterns) {
+      // For simple patterns, create regex for faster matching
+      if (!pattern.includes('*') && !pattern.includes('?')) {
+        this.compiledPatterns.set(pattern, new RegExp(`^${this.escapeRegex(pattern)}$`));
+      }
     }
+  }
+
+  private escapeRegex(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
@@ -73,12 +70,18 @@ export class FileFilterService {
     }
 
     return this.config.ignorePatterns.some(pattern => {
+      // Use pre-compiled regex for simple patterns (performance optimization)
+      const compiledPattern = this.compiledPatterns.get(pattern);
+      if (compiledPattern) {
+        return compiledPattern.test(filepath);
+      }
+      
       // Handle exact matches
       if (pattern === filepath) {
         return true;
       }
       
-      // Handle glob patterns
+      // Fall back to glob patterns for complex patterns
       return minimatch(filepath, pattern);
     });
   }
@@ -149,5 +152,9 @@ export class FileFilterService {
    */
   updateConfig(newConfig: Partial<FileFilterConfig>): void {
     this.config = { ...this.config, ...newConfig };
+    // Recompile patterns when ignore patterns change
+    if (newConfig.ignorePatterns) {
+      this.precompilePatterns();
+    }
   }
 }

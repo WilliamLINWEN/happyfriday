@@ -1,5 +1,6 @@
 // Service for intelligently chunking large diffs into manageable pieces
 import { DiffChunk } from '../../types/llm-types';
+import { getConfigManager, ChunkingFeatureConfig } from '../utils/config-manager';
 
 // Re-export for backward compatibility
 export { DiffChunk };
@@ -11,17 +12,38 @@ export interface ChunkingConfig {
   enabled: boolean;
 }
 
+interface FileBlock {
+  filename: string;
+  content: string;
+}
+
 export class DiffChunkerService {
   private config: ChunkingConfig;
+  private readonly MIN_CHUNK_SIZE = 100; // Minimum viable chunk size
 
   constructor(config?: Partial<ChunkingConfig>) {
+    const globalConfig = getConfigManager().getChunkingConfig();
     this.config = {
-      chunkSize: parseInt(process.env.DIFF_CHUNK_SIZE || '4000'),
-      overlapSize: parseInt(process.env.DIFF_CHUNK_OVERLAP || '200'),
-      maxChunks: parseInt(process.env.MAX_CHUNKS || '10'),
-      enabled: process.env.ENABLE_CHUNKING?.toLowerCase() === 'true',
+      chunkSize: globalConfig.chunkSize,
+      overlapSize: globalConfig.overlapSize,
+      maxChunks: globalConfig.maxChunks,
+      enabled: globalConfig.enabled,
       ...config
     };
+    
+    this.validateConfig();
+  }
+
+  private validateConfig(): void {
+    if (this.config.chunkSize < this.MIN_CHUNK_SIZE) {
+      throw new Error(`Chunk size must be at least ${this.MIN_CHUNK_SIZE} characters`);
+    }
+    if (this.config.overlapSize >= this.config.chunkSize) {
+      throw new Error('Overlap size must be smaller than chunk size');
+    }
+    if (this.config.maxChunks <= 0) {
+      throw new Error('Maximum chunks must be positive');
+    }
   }
 
   chunkDiff(diff: string): DiffChunk[] {
@@ -151,20 +173,24 @@ export class DiffChunkerService {
     return chunks;
   }
 
-  private parseFileBlocks(diff: string): Array<{filename: string, content: string}> {
-    const blocks: Array<{filename: string, content: string}> = [];
+  private parseFileBlocks(diff: string): FileBlock[] {
+    const blocks: FileBlock[] = [];
     const lines = diff.split('\n');
     
     let currentFile = '';
     let currentContent = '';
+    
+    // Pre-compile regex for better performance
+    const gitDiffRegex = /diff --git a\/(.+?) b\/(.+)/;
 
     for (const line of lines) {
       if (line.startsWith('diff --git')) {
+        // Save previous block if exists
         if (currentFile && currentContent) {
-          blocks.push({ filename: currentFile, content: currentContent });
+          blocks.push({ filename: currentFile, content: currentContent.trim() });
         }
         
-        const match = line.match(/diff --git a\/(.+?) b\/(.+)/);
+        const match = line.match(gitDiffRegex);
         currentFile = match ? match[2] : 'unknown';
         currentContent = line + '\n';
       } else {
@@ -172,8 +198,9 @@ export class DiffChunkerService {
       }
     }
 
+    // Don't forget the last block
     if (currentFile && currentContent) {
-      blocks.push({ filename: currentFile, content: currentContent });
+      blocks.push({ filename: currentFile, content: currentContent.trim() });
     }
 
     return blocks;
