@@ -1,51 +1,78 @@
-Please generate a comprehensive Pull Request description based on the following information using the template format below:
+You are tasked with generating a comprehensive Pull Request description. You will be provided with the following information as input context:
 
-**Pull Request Title:** {{title}}
+- **Pull Request Title:** {{title}}
+- **Current Description:** {{description}}
+- **Author:** {{author}}
+- **Repository:** {{repository}}
+- **Source Branch:** {{sourceBranch}}
+- **Target Branch:** {{destinationBranch}}
+- **Changes (diff):** {{diff}}
+- **Additional Context:** {{additionalContext}}
 
-**Current Description:** {{description}}
+**IMPORTANT ANALYSIS INSTRUCTIONS:**
 
-**Author:** {{author}}
+1. **Deep Diff Analysis:** Carefully examine the code changes (diff) to understand:
+   - What files were modified and their purpose
+   - The nature of changes (new features, bug fixes, refactoring, etc.)
+   - Dependencies and architectural implications
+   - Impact on existing functionality
 
-**Repository:** {{repository}}
+2. **Intent Inference:** Based on the diff patterns, branch names, and context, infer the user's intent:
+   - What problem were they trying to solve?
+   - What business value does this change provide?
+   - What technical debt or issues were they addressing?
 
-**Source Branch:** {{sourceBranch}}
+3. **Context Integration:** Use the additional context to understand:
+   - Business requirements or user stories
+   - Technical constraints or decisions
+   - Relationship to other features or systems
 
-**Target Branch:** {{destinationBranch}}
+4. **Existing Description Enhancement:** If a current description exists:
+   - Use it as a reference point, but DO NOT copy it verbatim
+   - Expand on it with deeper technical insights
+   - Add missing context or clarifications
+   - Provide more comprehensive explanations
 
-**Changes (diff):**
-```diff
-{{diff}}
-```
+5. **Professional Interpretation:** Generate a description that demonstrates deep understanding of the changes and their implications.
 
-**Additional Context:** {{additionalContext}}
-
-Please generate a description using the following template format:
+Based on this analysis, generate ONLY the PR description using the following template format. Do NOT include any of the input information above in your response:
 
 ## Background (Why)
 
-<!-- Describe the background of this PR. Why is this PR needed? What problem does it solve? -->
+<!-- Analyze the diff and context to explain: What problem does this solve? What business need does it address? What technical debt is being resolved? -->
 
 ## Implementation Approach (How)
 
-<!-- Describe the implementation approach and architectural decisions made. -->
+<!-- Based on the code changes, explain the technical approach taken. What architectural decisions were made? Why was this approach chosen over alternatives? -->
 
 ## Changes Made (What)
 
-<!-- Highlight the main changes implemented in this merge request. Specifically explain what you changed and why. -->
+<!-- Analyze the diff to provide specific, technical details about what was changed. Group related changes logically and explain the reasoning behind each change. -->
 
-- Feature/Change 1
-- Feature/Change 2
+- **[Category]**: Specific change description with reasoning
+- **[Category]**: Specific change description with reasoning
+
+### Key Technical Details
+
+<!-- Highlight important implementation details that reviewers should understand -->
+
+- Technical detail 1
+- Technical detail 2
 
 ### Testing & Validation
 
-<!-- List the test cases that have been validated. Include edge cases. -->
+<!-- Based on the changes made, suggest what should be tested. Include edge cases and integration concerns. -->
 
-- Test scenario 1
-- Test scenario 2
-- Test scenario 3
+- Test scenario based on changes
+- Edge case validation
+- Integration testing requirements
+
+## Impact & Considerations
+
+<!-- Analyze potential impacts: performance, backwards compatibility, security, etc. -->
 
 ## Additional Notes
 
-<!-- Any information helpful for PR reviewers (e.g., known limitations, future TODOs) -->
+<!-- Any information helpful for PR reviewers, including known limitations, future improvements, or related work -->
 
-Please respond in Markdown format, keeping it professional and concise.
+Generate a professional, technically accurate description that demonstrates deep understanding of the code changes and their business context.

@@ -1,25 +1,36 @@
-Please conduct a detailed code review of the Pull Request based on the following information and generate professional comments:
+You are a professional code review expert with deep programming and software engineering knowledge. You will be provided with the following information as input context:
 
-**Pull Request Title:** {{title}}
+- **Pull Request Title:** {{title}}
+- **Description:** {{description}}
+- **Author:** {{author}}
+- **Repository:** {{repository}}
+- **Source Branch:** {{sourceBranch}}
+- **Target Branch:** {{destinationBranch}}
+- **Changes (diff):** {{diff}}
+- **Additional Context:** {{additionalContext}}
 
-**Description:** {{description}}
+**IMPORTANT ANALYSIS INSTRUCTIONS:**
 
-**Author:** {{author}}
+1. **Deep Diff Analysis:** Thoroughly examine the code changes to understand:
+   - What files were modified and their role in the system
+   - The technical approach and implementation patterns used
+   - Dependencies between changes and potential side effects
+   - Code quality, style, and architectural decisions
 
-**Repository:** {{repository}}
+2. **Intent Understanding:** Analyze the diff patterns and context to infer:
+   - What problem the author was trying to solve
+   - Whether the implementation aligns with the stated goals
+   - If there are better approaches or alternative solutions
+   - Potential edge cases or scenarios not considered
 
-**Source Branch:** {{sourceBranch}}
+3. **Context Integration:** Use the additional context and description to:
+   - Understand business requirements and constraints
+   - Evaluate if the changes meet the stated objectives
+   - Consider the broader system impact
 
-**Target Branch:** {{destinationBranch}}
+4. **Professional Review Focus:** Provide actionable feedback that helps improve code quality and system reliability.
 
-**Changes (diff):**
-```diff
-{{diff}}
-```
-
-**Additional Context:** {{additionalContext}}
-
-You are a professional code review expert with deep programming and software engineering knowledge. Please conduct a detailed code review of the provided pull request, focusing on actionable feedback.
+Based on this analysis, generate ONLY the code review report. Do NOT include any of the input information above in your response.
 
 Please check the following aspects:
 - **Correctness**: Are there logical errors or potential bugs
@@ -79,10 +90,25 @@ Please generate comments that can be directly submitted to the PR for each speci
 
 #### Comment Format
 Each comment should include:
-- **Issue Description**: Briefly explain the issue
-- **Suggested Improvement**: Provide specific suggestions
-- **File & Line Number**: Indicate the file and line number of the issue
-- **Code Snippet**: Quote relevant code
+- **File Path**: Specific file path (e.g., `src/services/auth.ts`)
+- **Line Reference**: Line number or range (e.g., `Line 42` or `Lines 42-45`)
+- **Issue Description**: Clear explanation of the issue or concern
+- **Code Snippet**: Quote the relevant code section
+- **Suggested Improvement**: Specific, actionable recommendations
+- **Reasoning**: Brief explanation of why the change is needed
+
+**Example Format:**
+```
+**File:** `src/services/user-service.ts`
+**Line:** 156
+**Code:** 
+```typescript
+if (user.id == userId) {
+```
+**Issue:** Using loose equality comparison instead of strict equality
+**Suggestion:** Use strict equality (`===`) to avoid type coercion issues
+**Reasoning:** Prevents potential bugs from unintended type conversions
+```
 
 Ensure comments are concise, professional, and constructive for developers.
 
