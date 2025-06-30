@@ -61,51 +61,48 @@ Follow the standard **Red-Green-Refactor** cycle:
 - Add necessary comments for complex logic
 
 ## Testing Tools and Frameworks
-This project uses **TypeScript + Express.js**, recommended testing stack:
-- **Test Framework**: Jest or Vitest
-- **Assertion Library**: Jest built-in or Chai
-- **HTTP Testing**: Supertest
+This project uses **TypeScript + Express.js** with the following testing stack:
+- **Test Framework**: Jest with ts-jest for TypeScript support
+- **Test Environment**: Node.js for server tests, jsdom for client tests
+- **HTTP Testing**: Supertest for API endpoint testing
 - **Mock/Spy**: Jest built-in functionality
-- **Test Database**: SQLite in-memory or MongoDB Memory Server
 - **Type Checking**: TypeScript compiler + @types/jest
 
 ## TypeScript + Express.js Specific Guidelines
 
 ### API Test Structure
 ```typescript
-describe('POST /api/users', () => {
-  it('should_create_user_when_valid_data_provided', async () => {
+describe('POST /api/generate-description', () => {
+  it('should_generate_description_when_valid_pr_url_provided', async () => {
     // Arrange
-    const userData = { name: 'John', email: 'john@example.com' };
+    const requestData = { 
+      prUrl: 'https://bitbucket.org/workspace/repo/pull-requests/123', 
+      provider: 'openai' 
+    };
     
     // Act
     const response = await request(app)
-      .post('/api/users')
-      .send(userData);
+      .post('/api/generate-description')
+      .send(requestData);
     
     // Assert
-    expect(response.status).toBe(201);
-    expect(response.body).toMatchObject(userData);
+    expect(response.status).toBe(200);
+    expect(response.body.description).toBeDefined();
   });
 });
 ```
 
-### Middleware Testing
+### Service Testing
+Use mocks for external dependencies:
 ```typescript
-describe('authMiddleware', () => {
-  it('should_return_401_when_no_token_provided', async () => {
-    const response = await request(app)
-      .get('/api/protected')
-      .expect(401);
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
+
+describe('LLMService', () => {
+  it('should_process_chunks_when_diff_is_large', async () => {
+    // Test chunking service logic
   });
 });
-```
-
-### Dependency Injection Testing
-Use Mocks to test Service layer:
-```typescript
-jest.mock('../services/userService');
-const mockUserService = userService as jest.Mocked<typeof userService>;
 ```
 
 ## Common TDD Patterns
@@ -153,9 +150,19 @@ Build and run:
 - `npm run build:watch` - Compile with watch mode
 
 Testing and quality:
-- `npm test` - Run Jest test suite
+- `npm test` - Run Jest test suite (includes server and client tests)
 - `npm run lint` - Run ESLint on TypeScript files
 - `npm run type-check` - Run TypeScript compiler without emitting files
+
+Docker:
+- `npm run docker:build` - Build Docker image
+- `npm run docker:run` - Run Docker container with environment file
+- `npm run docker:up` - Start services with docker-compose
+- `npm run docker:down` - Stop docker-compose services
+- `npm run docker:logs` - View docker-compose logs
+
+Utilities:
+- `npm run copy-templates` - Copy template files to dist/ directory
 
 ## Architecture Overview
 
@@ -174,6 +181,7 @@ This is a Bitbucket PR description generator service with a TypeScript/Express b
 - Registry pattern (`llm-service-registry.ts`) for managing multiple LLM providers
 - Base service class (`llm-service.ts`) with provider abstraction
 - Individual provider services: OpenAI, Claude (Anthropic), Ollama
+- LangChain integration for consistent provider interface
 - Streaming support with fallback to non-streaming for unsupported providers
 - Template system for consistent prompt formatting
 
@@ -204,6 +212,36 @@ The application expects environment variables for LLM API keys:
 - `OPENAI_API_KEY` - For OpenAI/GPT services
 - `ANTHROPIC_API_KEY` - For Claude services  
 - `OLLAMA_BASE_URL` - For local Ollama instances
+- `BITBUCKET_USERNAME` - Bitbucket username for API access
+- `BITBUCKET_APP_PASSWORD` - Bitbucket app password for authentication
+
+### Docker Deployment
+
+The application includes Docker support for containerized deployment:
+
+**Quick Start with Docker:**
+```bash
+# Copy environment template
+cp .env.example .env
+# Edit .env with your API keys and Bitbucket credentials
+
+# Start with docker-compose
+npm run docker:up
+
+# Access application at http://localhost:3000
+```
+
+**Docker Files:**
+- `Dockerfile` - Multi-stage build with production optimization
+- `docker-compose.yml` - Complete deployment configuration with environment variables
+- `.dockerignore` - Excludes unnecessary files from Docker build context
+
+**Docker Features:**
+- Multi-stage build for optimized production image
+- Non-root user for enhanced security
+- Health check endpoint monitoring
+- Comprehensive environment variable configuration
+- Volume support for data persistence
 
 ### Testing
 

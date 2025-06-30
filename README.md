@@ -68,6 +68,8 @@ npm run dev
    - Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Production Setup
+
+### Option 1: Traditional Deployment
 1. **Build the application**
    ```sh
    npm run build
@@ -77,15 +79,52 @@ npm run dev
    npm start
    ```
 
+### Option 2: Docker Deployment (Recommended)
+1. **Set up environment variables**
+   ```sh
+   cp .env.example .env
+   # Edit .env with your API keys and Bitbucket credentials
+   ```
+2. **Start with Docker Compose**
+   ```sh
+   npm run docker:up
+   ```
+3. **Access the application**
+   - Open [http://localhost:3000](http://localhost:3000)
+   - Health check: [http://localhost:3000/health](http://localhost:3000/health)
+
+### Docker Management
+```sh
+# View logs
+npm run docker:logs
+
+# Stop services
+npm run docker:down
+
+# Rebuild and restart
+npm run docker:down && npm run docker:up
+```
+
 ## Available Scripts
+
+### Development
 - `npm run dev` - Start development server with ts-node
 - `npm run dev:watch` - Start development server with auto-restart (nodemon)
 - `npm run build` - Build TypeScript to JavaScript and copy templates
 - `npm run build:watch` - Build in watch mode
 - `npm start` - Start production server (requires build first)
+
+### Testing and Quality
 - `npm test` - Run Jest unit tests
 - `npm run lint` - Run ESLint for code quality
 - `npm run type-check` - Run TypeScript compiler without emitting files
+
+### Docker
+- `npm run docker:build` - Build Docker image
+- `npm run docker:run` - Run Docker container with environment file
+- `npm run docker:up` - Start services with docker-compose
+- `npm run docker:down` - Stop docker-compose services
+- `npm run docker:logs` - View docker-compose logs
 
 ## Environment Variables
 See `.env.example` for all required variables:
@@ -275,7 +314,11 @@ Organize templates by category for better user experience:
 │   └── types/           # TypeScript type definitions
 ├── tests/               # Test files
 ├── docs/                # Documentation
-└── dist/                # Compiled output (after build)
+├── dist/                # Compiled output (after build)
+├── Dockerfile           # Docker container configuration
+├── docker-compose.yml   # Docker Compose service definition
+├── .dockerignore        # Docker build exclusions
+└── .env.example         # Environment variables template
 ```
 
 ## API Endpoints
@@ -325,6 +368,23 @@ rm -rf dist/
 npm run build
 ```
 
+**Docker Issues:**
+```sh
+# View container logs
+npm run docker:logs
+
+# Restart containers
+npm run docker:down && npm run docker:up
+
+# Rebuild Docker image
+docker-compose build --no-cache
+npm run docker:up
+
+# Check container health
+docker ps
+curl http://localhost:3000/health
+```
+
 **LLM API connection issues:**
 - Verify API keys are correct and have proper permissions
 - Check rate limits and quotas for your API provider
@@ -355,5 +415,8 @@ See commit history for detailed changes. Major updates:
 - Added comprehensive security middleware
 - Implemented rate limiting and input validation
 - Added template customization support
+- **New**: Docker containerization support with multi-stage builds
+- **New**: Complete docker-compose configuration for easy deployment
+- **New**: Health check endpoints for container monitoring
 
 ---
