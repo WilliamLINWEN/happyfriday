@@ -16,7 +16,7 @@
     "test": "jest --forceExit",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit",
-    "docker:build": "docker build -t happy-friday .",
+    "docker:build": "docker build --no-cache -t happy-friday .",
     "docker:run": "docker run -p 3000:3000 --env-file .env happy-friday",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
