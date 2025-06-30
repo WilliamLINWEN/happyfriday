@@ -1,25 +1,15 @@
-請根據以下資訊生成一個完整的 Pull Request 描述，並按照以下模板格式：
+您需要根據提供的資訊生成一個完整的 Pull Request 描述。以下資訊將作為輸入上下文：
 
-**Pull Request 標題:** {{title}}
+- **Pull Request 標題:** {{title}}
+- **當前描述:** {{description}}
+- **作者:** {{author}}
+- **倉庫:** {{repository}}
+- **來源分支:** {{sourceBranch}}
+- **目標分支:** {{destinationBranch}}
+- **變更內容 (diff):** {{diff}}
+- **額外背景資訊:** {{additionalContext}}
 
-**當前描述:** {{description}}
-
-**作者:** {{author}}
-
-**倉庫:** {{repository}}
-
-**來源分支:** {{sourceBranch}}
-
-**目標分支:** {{destinationBranch}}
-
-**變更內容 (diff):**
-```diff
-{{diff}}
-```
-
-**額外背景資訊:** {{additionalContext}}
-
-請按照以下模板格式生成描述：
+請基於這些資訊，僅生成PR描述內容，按照以下模板格式。請勿在回應中包含上述任何輸入資訊：
 
 ## 背景描述 (Why)
 
