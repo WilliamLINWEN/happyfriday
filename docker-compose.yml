@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  happy-friday:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Bitbucket API Configuration - REQUIRED
+      - BITBUCKET_API_URL=${BITBUCKET_API_URL:-https://api.bitbucket.org/2.0}
+      - BITBUCKET_USERNAME=${BITBUCKET_USERNAME}
+      - BITBUCKET_APP_PASSWORD=${BITBUCKET_APP_PASSWORD}
+      - BITBUCKET_API_TIMEOUT_MS=${BITBUCKET_API_TIMEOUT_MS:-10000}
+      - BITBUCKET_DIFF_MAX_SIZE=${BITBUCKET_DIFF_MAX_SIZE:-1048576}
+      - BITBUCKET_CACHE_TTL_MS=${BITBUCKET_CACHE_TTL_MS:-60000}
+      # LLM API Keys - set these in your .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
+      # LLM Configuration
+      - LLM_PROMPT_MAX_DIFF=${LLM_PROMPT_MAX_DIFF:-8000}
+      # Chunking configuration
+      - ENABLE_CHUNKING=${ENABLE_CHUNKING:-true}
+      - DIFF_CHUNK_SIZE=${DIFF_CHUNK_SIZE:-4000}
+      - DIFF_CHUNK_OVERLAP=${DIFF_CHUNK_OVERLAP:-200}
+      - MAX_CHUNKS=${MAX_CHUNKS:-10}
+      # File filtering
+      - ENABLE_FILE_FILTERING=${ENABLE_FILE_FILTERING:-true}
+      - IGNORE_PATTERNS=${IGNORE_PATTERNS:-package-lock.json,*.lock,go.sum,yarn.lock,pnpm-lock.yaml}
+      # Security and Rate Limiting
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - API_RATE_LIMIT_WINDOW_MS=${API_RATE_LIMIT_WINDOW_MS:-300000}
+      - API_RATE_LIMIT_MAX_REQUESTS=${API_RATE_LIMIT_MAX_REQUESTS:-20}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - MAX_REQUEST_SIZE=${MAX_REQUEST_SIZE:-1048576}
+    volumes:
+      # Mount for development (comment out for production)
+      # - .:/app
+      # - /app/node_modules
+      - app_data:/app/tmp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - happy-friday-network
+
+  # Optional: Include Ollama service for local LLM
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - happy-friday-network
+
+volumes:
+  app_data:
+  # ollama_data:
+
+networks:
+  happy-friday-network:
+    driver: bridge

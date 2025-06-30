@@ -15,7 +15,12 @@
     "copy-templates": "copyfiles -u 1 \"src/templates/**/*\" dist/",
     "test": "jest --forceExit",
     "lint": "eslint src/**/*.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "docker:build": "docker build -t happy-friday .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env happy-friday",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "keywords": [],
   "author": "",
@@ -28,9 +33,7 @@
     "@types/minimatch": "^5.1.2",
     "@types/supertest": "^6.0.3",
     "copyfiles": "^2.4.1",
-    "dotenv": "^16.5.0",
     "eslint": "^9.28.0",
-    "express": "^5.1.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "nodemon": "^3.1.10",
@@ -48,6 +51,8 @@
     "@types/cors": "^2.8.19",
     "axios": "^1.9.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "minimatch": "^10.0.3"
   }
 }
